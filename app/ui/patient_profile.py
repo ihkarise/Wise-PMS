@@ -8,14 +8,11 @@ from app.services.attachment_service import (absolute_path, add_attachment,
                                              delete_attachment)
 from app.services.case_service import cases_for_patient
 from app.services.patient_service import get_patient, update_patient
+from app.config.constants import BLOOD_GROUPS, CONSULTATION_TYPES, GENDERS
 from app.services.timeline_service import timeline_for_patient
 from app.services.visit_service import visits_for_patient
 from app.ui import theme as t
 from app.ui.shell import shell
-
-CONSULTATION_TYPES = ["Walk-In", "Online", "Telephonic", "Home Visit"]
-GENDERS = ["Female", "Male", "Other"]
-BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
 
 _EVENT_STYLE = {
     "visit": (ft.Icons.MEDICAL_SERVICES, t.PRIMARY),

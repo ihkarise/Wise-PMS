@@ -7,14 +7,9 @@ import shutil
 from datetime import datetime
 from typing import List, Optional
 
+from app.config.constants import FILE_TYPES
 from app.database.db import ATTACHMENTS_DIR, get_connection
 from app.services.audit_service import log_action
-
-FILE_TYPES = {
-    ".pdf": "PDF", ".jpg": "Image", ".jpeg": "Image", ".png": "Image",
-    ".gif": "Image", ".webp": "Image", ".bmp": "Image",
-    ".doc": "Document", ".docx": "Document", ".txt": "Document",
-}
 
 
 def add_attachment(patient_id: int, reg_no: str, source_path: str,

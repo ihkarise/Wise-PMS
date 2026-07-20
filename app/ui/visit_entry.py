@@ -9,14 +9,13 @@ import flet as ft
 
 from app.services.case_service import cases_for_patient
 from app.services.patient_service import get_patient
+from app.config.constants import VISIT_OUTCOMES as OUTCOMES
+from app.config.constants import VISIT_TYPES
 from app.services.visit_service import (create_visit,
                                         extract_prescription_items,
                                         get_visit, update_visit)
 from app.ui import theme as t
 from app.ui.shell import shell
-
-OUTCOMES = ["Improving", "Same", "Worse", "Cured", "New Complaint", "Other"]
-VISIT_TYPES = ["Walk-In", "Online", "Telephonic", "Home Visit"]
 
 
 def _notes_field(value, hint, min_lines=4):

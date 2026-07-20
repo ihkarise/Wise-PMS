@@ -4,12 +4,11 @@ Narrative first: a large free-writing area. No mandatory structure.
 
 import flet as ft
 
+from app.config.constants import CASE_STATUSES
 from app.services.case_service import create_case, get_case, update_case
 from app.services.patient_service import get_patient
 from app.ui import theme as t
 from app.ui.shell import shell
-
-CASE_STATUSES = ["Open", "Closed", "Resolved", "On Hold"]
 
 
 def case_view(page: ft.Page, patient_id: int, case_id=None) -> ft.View:
