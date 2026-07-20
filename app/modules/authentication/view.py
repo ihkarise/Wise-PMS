@@ -2,8 +2,8 @@
 
 import flet as ft
 
-from app.services.auth_service import authenticate
-from app.ui import theme as t
+from app.modules.authentication.service import authenticate
+from app.shared import theme as t
 
 
 def login_view(page: ft.Page) -> ft.View:

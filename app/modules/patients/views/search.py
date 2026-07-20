@@ -2,9 +2,10 @@
 
 import flet as ft
 
-from app.services.patient_service import search_patients
-from app.ui import theme as t
-from app.ui.shell import shell
+from app.modules.patients.service import search_patients
+from app.shared import theme as t
+from app.shared.shell import shell
+from app.shared.widgets import empty_state
 
 
 def search_view(page: ft.Page) -> ft.View:
@@ -13,16 +14,8 @@ def search_view(page: ft.Page) -> ft.View:
 
     def build_table(patients):
         if not patients:
-            return ft.Container(
-                padding=40, alignment=ft.alignment.center,
-                content=ft.Column(
-                    [
-                        ft.Icon(ft.Icons.SEARCH_OFF, size=48, color=t.TEXT_MUTED),
-                        t.muted("No patients found."),
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
-            )
+            return empty_state(ft.Icons.SEARCH_OFF, "No patients found.",
+                               padding=40, spacing=10)
         rows = [
             ft.DataRow(
                 cells=[

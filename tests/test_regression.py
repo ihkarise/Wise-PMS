@@ -19,8 +19,9 @@ import zipfile
 
 # WISE_PMS_HOME must be set BEFORE any app import so all runtime paths resolve
 # into an isolated temp directory and the real clinic data is never touched.
-_TMP_HOME = tempfile.mkdtemp(prefix="wisepms_regression_")
-os.environ["WISE_PMS_HOME"] = _TMP_HOME
+os.environ.setdefault("WISE_PMS_HOME",
+                      tempfile.mkdtemp(prefix="wisepms_regression_"))
+_TMP_HOME = os.environ["WISE_PMS_HOME"]
 
 
 def build_snapshot():
@@ -29,7 +30,12 @@ def build_snapshot():
     def p(*a):
         lines.append(" ".join(str(x) for x in a))
 
-    from app.database.db import get_connection, init_db
+    # Start from a clean database so the snapshot is order-independent when the
+    # suite shares one isolated home directory.
+    from app.config import paths
+    from app.core.database import get_connection, init_db
+    if os.path.exists(paths.DB_PATH):
+        os.remove(paths.DB_PATH)
     init_db()
 
     # 1. Schema

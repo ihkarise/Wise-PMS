@@ -1,4 +1,4 @@
-"""Wise PMS — Screen 07: Visit Entry (Sprint 2).
+"""Wise PMS — Screen 07: Visit Entry.
 Daily consultation screen. Narrative editors are primary; the detected
 medicines panel is optional assistance and never restricts the doctor.
 """
@@ -7,15 +7,15 @@ from datetime import date
 
 import flet as ft
 
-from app.services.case_service import cases_for_patient
-from app.services.patient_service import get_patient
 from app.config.constants import VISIT_OUTCOMES as OUTCOMES
 from app.config.constants import VISIT_TYPES
-from app.services.visit_service import (create_visit,
+from app.modules.cases.service import cases_for_patient
+from app.modules.patients.service import get_patient
+from app.modules.visits.service import (create_visit,
                                         extract_prescription_items,
                                         get_visit, update_visit)
-from app.ui import theme as t
-from app.ui.shell import shell
+from app.shared import theme as t
+from app.shared.shell import shell
 
 
 def _notes_field(value, hint, min_lines=4):

@@ -1,14 +1,14 @@
-"""Wise PMS — Screen 06: Case Record (Sprint 2).
+"""Wise PMS — Screen 06: Case Record.
 Narrative first: a large free-writing area. No mandatory structure.
 """
 
 import flet as ft
 
 from app.config.constants import CASE_STATUSES
-from app.services.case_service import create_case, get_case, update_case
-from app.services.patient_service import get_patient
-from app.ui import theme as t
-from app.ui.shell import shell
+from app.modules.cases.service import create_case, get_case, update_case
+from app.modules.patients.service import get_patient
+from app.shared import theme as t
+from app.shared.shell import shell
 
 
 def case_view(page: ft.Page, patient_id: int, case_id=None) -> ft.View:

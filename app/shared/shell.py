@@ -2,9 +2,9 @@
 
 import flet as ft
 
-from app.services.auth_service import logout
-from app.services.backup_service import backup_now
-from app.ui import theme as t
+from app.modules.authentication.service import logout
+from app.modules.backup.service import backup_now
+from app.shared import theme as t
 
 
 def shell(page: ft.Page, route: str, body: ft.Control) -> ft.View:

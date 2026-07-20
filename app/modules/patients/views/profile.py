@@ -1,18 +1,20 @@
-"""Wise PMS — Screen 05: Patient Profile (Sprint 2: tabs + timeline +
-attachments + quick actions) and Edit Patient."""
+"""Wise PMS — Screen 05: Patient Profile (tabs + timeline + attachments +
+quick actions) and Edit Patient."""
 
 import flet as ft
 
-from app.services.attachment_service import (absolute_path, add_attachment,
+from app.config.constants import BLOOD_GROUPS, CONSULTATION_TYPES, GENDERS
+from app.modules.attachments.service import (absolute_path, add_attachment,
                                              attachments_for_patient,
                                              delete_attachment)
-from app.services.case_service import cases_for_patient
-from app.services.patient_service import get_patient, update_patient
-from app.config.constants import BLOOD_GROUPS, CONSULTATION_TYPES, GENDERS
-from app.services.timeline_service import timeline_for_patient
-from app.services.visit_service import visits_for_patient
-from app.ui import theme as t
-from app.ui.shell import shell
+from app.modules.cases.service import cases_for_patient
+from app.modules.patients.service import get_patient, update_patient
+from app.modules.timeline.service import timeline_for_patient
+from app.modules.visits.service import visits_for_patient
+from app.shared import theme as t
+from app.shared.shell import shell
+from app.shared.widgets import empty_state
+from app.shared.widgets import info_item as _info_item
 
 _EVENT_STYLE = {
     "visit": (ft.Icons.MEDICAL_SERVICES, t.PRIMARY),
@@ -21,27 +23,9 @@ _EVENT_STYLE = {
 }
 
 
-def _info_item(label, value):
-    return ft.Column(
-        [
-            ft.Text(label.upper(), size=11, font_family=t.FONT,
-                    color=t.TEXT_MUTED, weight=ft.FontWeight.W_600),
-            ft.Text(str(value) if value not in (None, "") else "—",
-                    size=15, font_family=t.FONT, color=t.TEXT_DARK),
-        ],
-        spacing=2, expand=True,
-    )
-
-
 def _empty(icon, line1, line2=""):
-    return ft.Container(
-        padding=32, alignment=ft.alignment.center,
-        content=ft.Column(
-            [ft.Icon(icon, size=44, color=t.TEXT_MUTED), t.muted(line1)]
-            + ([t.muted(line2, size=12)] if line2 else []),
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4,
-        ),
-    )
+    return empty_state(icon, line1, line2 or None, padding=32, icon_size=44,
+                       spacing=4, secondary_size=12)
 
 
 def _not_found(page) -> ft.View:

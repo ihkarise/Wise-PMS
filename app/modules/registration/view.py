@@ -3,9 +3,9 @@
 import flet as ft
 
 from app.config.constants import BLOOD_GROUPS, CONSULTATION_TYPES, GENDERS
-from app.services.patient_service import create_patient
-from app.ui import theme as t
-from app.ui.shell import shell
+from app.modules.patients.service import create_patient
+from app.shared import theme as t
+from app.shared.shell import shell
 
 
 def registration_view(page: ft.Page) -> ft.View:

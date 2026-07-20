@@ -9,15 +9,15 @@ Login:  admin / admin123
 
 import flet as ft
 
-from app.database.db import init_db
-from app.ui import theme as t
-from app.ui.case_record import case_view
-from app.ui.dashboard import dashboard_view
-from app.ui.login import login_view
-from app.ui.patient_profile import edit_view, profile_view
-from app.ui.patient_search import search_view
-from app.ui.registration import registration_view
-from app.ui.visit_entry import visit_view
+from app.core.database import init_db
+from app.modules.authentication.view import login_view
+from app.modules.cases.view import case_view
+from app.modules.dashboard.view import dashboard_view
+from app.modules.patients.views.profile import edit_view, profile_view
+from app.modules.patients.views.search import search_view
+from app.modules.registration.view import registration_view
+from app.modules.visits.view import visit_view
+from app.shared import theme as t
 
 
 def main(page: ft.Page):
