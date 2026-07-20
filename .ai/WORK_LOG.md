@@ -2,6 +2,58 @@
 
 > Append an entry per work session. Newest first. **Updated:** 2026-07-20.
 
+## 2026-07-20 — Sprint 1: Consultation Workspace Skeleton (C1)
+**Branch:** `claude/consultation-workspace-skeleton-qi1nfx`
+
+### Phase 0 (targeted re-grounding)
+- Read the sprint's inputs only: `specs/CONSULTATION_WORKSPACE.md`,
+  `.ai/{CURRENT_PHASE,NEXT_TASK,ARCHITECTURE_RULES,NEXT_PHASE}.md`;
+  `app/bootstrap.py`, `core/router.py`, `shared/{shell,theme,widgets}.py`; the
+  dashboard/visits/cases/patients controllers + views as pattern references; the
+  four+ existing tests.
+- Confirmed baseline green (`python3 -m pytest -q` → 16 passing) before changes.
+
+### Scope kept (skeleton only — per charter)
+No business logic, no persistence, no OCR/AI/Protocol/WhatsApp/Billing/
+Dispensing/Investigation. Structure + navigation + honest placeholders. Sprint 0
+(migrations/DB infra) untouched.
+
+### Implementation
+- New `app/modules/consultation/` vertical slice (composition-only — **no
+  `models.py`, no `repository.py`, no SQL**):
+  - `service.py` — `workspace_context(pid, cid)`: read-only composition over
+    `patients.service.get_patient` + `cases.service.get_case`. No mutation.
+  - `controller.py` — `workspace_controller` + `ROUTES`; parses the optional
+    draft-visit sentinel and the `?section=` deep-link. Orchestrates only.
+  - `view.py` — `workspace_view`: shell header + left section-nav rail + center
+    section cards (Patient Summary = real read-only data; Chief Complaint,
+    History, Diagnosis, Prescription, Remarks, Follow-up = placeholders) + right
+    rail placeholder panels (Timeline, Investigations, OCR, Protocol, AI) +
+    bottom status/action bar with **disabled** Print/Invoice/Dispense/WhatsApp/
+    Complete Visit. Not-found → friendly state, never a crash.
+- `app/shared/widgets.py` — new DRY helpers `disabled_button` and
+  `placeholder_card` (10 call sites across the workspace).
+- `app/shared/theme.py` — `card()` gains an optional `border` argument (used to
+  highlight the active section; reusable).
+- Navigation wiring: `bootstrap.py` registers `CONSULTATION_ROUTES`;
+  `cases/view.py` gains a **Start Consultation** button that saves the case and
+  opens the Workspace (the only cross-module edit — a nav link, no logic change).
+
+### Tests
+- `tests/test_router.py` — `_setup` now creates a case; contract extended to
+  cover the workspace base route, `/visit/new`, `/visit/<id>`, and `?section=`.
+- `tests/test_views_build.py` — builds the workspace (new draft, reopened visit,
+  section deep-link, case-not-found path).
+- `python3 -m pytest -q` → **16 passing** (regression golden byte-identical —
+  no schema/behaviour change).
+
+### Docs (same commit)
+- `docs/modules/Consultation.md` (new), `docs/CHANGELOG.md`,
+  `specs/CONSULTATION_WORKSPACE.md` (implementation-status note), `.ai/`
+  state files (this log, `CURRENT_PHASE`, `NEXT_TASK`).
+
+---
+
 ## 2026-07-20 — Sprint 0: Infrastructure Foundation (DB Migrations / F1)
 **Branch:** `claude/wiseos-health-sprint-exec-w2jjvh`
 

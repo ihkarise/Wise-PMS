@@ -52,7 +52,7 @@ def case_view(page: ft.Page, patient_id: int, case_id=None) -> ft.View:
             "status": status.value,
         }
 
-    def save(then_visit=False):
+    def save(then_visit=False, then_workspace=False):
         nonlocal case_id
         if not (case_title.value or "").strip() and not (case_notes.value or "").strip():
             error_text.value = "Write a case title or some case notes before saving."
@@ -67,7 +67,9 @@ def case_view(page: ft.Page, patient_id: int, case_id=None) -> ft.View:
             t.snack(page, "Unable to save record. Please try again.", error=True)
             return
         t.snack(page, "Case saved.")
-        if then_visit:
+        if then_workspace:
+            page.go(f"/patient/{patient_id}/case/{case_id}/workspace")
+        elif then_visit:
             page.go(f"/patient/{patient_id}/visit/new?case={case_id}")
         else:
             page.go(f"/patient/{patient_id}")
@@ -110,6 +112,10 @@ def case_view(page: ft.Page, patient_id: int, case_id=None) -> ft.View:
                             on_click=lambda e:
                                 page.go(f"/patient/{patient_id}")),
                         ft.Container(expand=True),
+                        t.secondary_button(
+                            "Start Consultation",
+                            icon=ft.Icons.DASHBOARD_CUSTOMIZE,
+                            on_click=lambda e: save(then_workspace=True)),
                         t.secondary_button(
                             "Save + Start Visit", icon=ft.Icons.MEDICAL_SERVICES,
                             on_click=lambda e: save(then_visit=True)),

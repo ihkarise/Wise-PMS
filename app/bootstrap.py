@@ -13,6 +13,7 @@ from app.core.router import Router
 from app.modules.authentication.controller import ROUTES as AUTH_ROUTES
 from app.modules.authentication.controller import login_controller
 from app.modules.cases.controller import ROUTES as CASE_ROUTES
+from app.modules.consultation.controller import ROUTES as CONSULTATION_ROUTES
 from app.modules.dashboard.controller import ROUTES as DASHBOARD_ROUTES
 from app.modules.dashboard.controller import dashboard_controller
 from app.modules.patients.controller import ROUTES as PATIENT_ROUTES
@@ -29,6 +30,7 @@ ROUTES = (
     + PATIENT_ROUTES
     + CASE_ROUTES
     + VISIT_ROUTES
+    + CONSULTATION_ROUTES
 )
 
 

@@ -139,7 +139,7 @@ def dropdown(label, options, value=None, width=None, expand=False):
     )
 
 
-def card(content, padding=24, expand=False, width=None):
+def card(content, padding=24, expand=False, width=None, border=None):
     return ft.Container(
         content=content,
         bgcolor=WHITE,
@@ -148,6 +148,7 @@ def card(content, padding=24, expand=False, width=None):
         shadow=CARD_SHADOW,
         expand=expand,
         width=width,
+        border=border,
     )
 
 

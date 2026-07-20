@@ -4,26 +4,35 @@
 > one. **Updated:** 2026-07-20.
 
 ## Now
-**Sprint 0 (DB Migrations / F1) is complete and committed — await Product Owner
-review.** Do not start Sprint 1 automatically (charter: one sprint, then stop).
+**Sprint 1 (Consultation Workspace Skeleton / C1) is complete and committed —
+await Product Owner review.** Do not start the next sprint automatically
+(charter: one sprint, then stop).
 
 Delivered this sprint:
-- [x] `app/core/migrations/` package — runner, registry, baseline `0001_initial`
-- [x] `schema_version` ledger table + rollback support
-- [x] `init_db()` migrates then seeds
-- [x] `tests/test_migrations.py` (idempotency, legacy stamping, rollback, parity)
-- [x] Regression golden updated for `schema_version` (ADR-0008)
-- [x] Docs updated (DATABASE, DECISIONS, CHANGELOG, KNOWN_LIMITATIONS, `.ai/`)
-- [x] `python3 -m pytest -q` → 16 passing; committed + pushed (no PR)
+- [x] `app/modules/consultation/` vertical slice — service (read-only
+      composition), controller + `ROUTES`, workspace skeleton view
+- [x] Layout: top header · left section nav · center sections · right
+      placeholder panels · bottom disabled action bar
+- [x] Shared `disabled_button` + `placeholder_card`; `theme.card(border=…)`
+- [x] Navigation wired (`bootstrap.py` + **Start Consultation** in the case view)
+- [x] Router-contract + view-build tests extended for the new route/view
+- [x] `python3 -m pytest -q` → 16 passing (regression golden byte-identical)
+- [x] Docs updated (module doc, CHANGELOG, spec status, `.ai/`); pushed, no PR
 
 ## Blocked on
-Product Owner approval before starting Sprint 1.
+Product Owner approval before starting the next sprint.
 
-## After approval (proposed Sprint 1 = Settings UI / F2)
-Per [`../specs/IMPLEMENTATION_PLAN.md`](../specs/IMPLEMENTATION_PLAN.md) the next
-foundation phase is **F2 — Settings UI + templates** (spec:
-[`../specs/SETTINGS_SYSTEM.md`](../specs/SETTINGS_SYSTEM.md)). It depends only on
-F1, which is now in place, and unblocks Printer/WhatsApp. First slice:
-1. Settings service/repository (read + update the single `settings` row).
-2. Settings view + controller/route wired into `bootstrap.py` and `shell.py`.
-3. Service tests + view-build test; regression golden stays green.
+## After approval (proposed next sprint)
+Grow the Workspace by landing its **first feeder slice** rather than more
+skeleton. Two low-risk candidates, pick one:
+1. **Real narrative editors + draft autosave** — wire Chief Complaint / History /
+   Diagnosis / Prescription / Remarks / Follow-up to `visits.service`
+   (create/update a draft visit), with autosave; needs the F1 migration runner
+   for any new additive visit columns (chief complaint, examination). Makes the
+   Workspace actually usable end-to-end for one consultation.
+2. **Settings UI (F2)** — small, visible, unblocks Printer/WhatsApp templates the
+   Workspace's Print/WhatsApp actions will eventually need.
+
+Recommendation: **(1)** — it turns the skeleton into a working consultation and
+directly serves the anchor feature; (2) can follow to enable the terminal
+actions. Either way: one sprint, then stop for approval.

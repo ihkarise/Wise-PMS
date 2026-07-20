@@ -1,8 +1,20 @@
 # Consultation Workspace — Specification
 
-> **Status:** Design only (Phase 2). Not implemented. Anchor feature of WiseOS
+> **Status:** 🟡 **Skeleton implemented (Sprint 1).** Anchor feature of WiseOS
 > Health. Backlog **C1**. **Last updated:** 2026-07-20.
 > Subordinate to [`PRODUCT_CONSTITUTION.md`](./PRODUCT_CONSTITUTION.md).
+>
+> **Sprint 1 delivered the structural skeleton** — module
+> `app/modules/consultation/` (composition-only: no table, no SQL, no business
+> logic), the route
+> `^/patient/(?P<pid>\d+)/case/(?P<cid>\d+)/workspace(?:/visit/(?P<vid>new|\d+))?$`,
+> and the layout described in §4 with honest placeholders. Patient Summary shows
+> real read-only data; all other center sections, every right-rail panel, and all
+> bottom-bar terminal actions are placeholders/disabled. Reachable via **Start
+> Consultation** on the Case Record. See
+> [`../docs/modules/Consultation.md`](../docs/modules/Consultation.md). The panel
+> table (§3) and integration contract (§6) remain the forward design; panels
+> light up as feeder modules ship.
 
 ## 1. Purpose
 

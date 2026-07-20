@@ -136,6 +136,7 @@ Routing is a **single `route_change` closure in `main.py`** driven by
 | `/patient/<pid>/edit`                 | `edit_view(page, pid)`                     |
 | `/patient/<pid>/case/<cid|new>`       | `case_view(page, pid, cid)`                |
 | `/patient/<pid>/visit/<vid|new>?case=`| `visit_view(page, pid, vid, preselected_case)` |
+| `/patient/<pid>/case/<cid>/workspace(/visit/<vid|new>)?` | `workspace_view(page, pid, cid, vid, section)` — Consultation Workspace (Sprint 1 skeleton) |
 | *(anything else)*                     | `dashboard_view` (or `login` if no user)   |
 
 Mechanics:
