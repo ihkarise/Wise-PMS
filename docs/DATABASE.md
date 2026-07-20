@@ -1,7 +1,8 @@
 # WiseOS Health — Database
 
-> Source of truth for the schema is `app/core/database.py` (`SCHEMA`).
-> This document mirrors it and records conventions. **Last updated:** 2026-07-20.
+> Source of truth for the schema is the migration set under
+> `app/core/migrations/` (baseline: `v0001_initial.py`). This document mirrors it
+> and records conventions. **Last updated:** 2026-07-20.
 
 ## Engine & conventions
 
@@ -11,10 +12,14 @@
   `row_factory = sqlite3.Row`, `PRAGMA foreign_keys = ON`.
 - All SQL lives in **repositories** (`app/modules/<domain>/repository.py`) built
   on `core/repository.BaseRepository`. No SQL in services or views.
-- **Idempotent bootstrap:** `init_db()` runs `CREATE TABLE IF NOT EXISTS` and
-  seeds `admin`/`admin123` + one `settings` row only if absent.
+- **Idempotent bootstrap:** `init_db()` applies pending migrations via
+  `app.core.migrations.migrate(conn)`, then seeds `admin`/`admin123` + one
+  `settings` row only if absent.
 
-## Tables (8)
+## Tables (8 domain + 1 internal)
+
+The 8 domain tables below plus one internal bookkeeping table, `schema_version`
+(`version` PK · `name` · `applied_at`), which records every applied migration.
 
 ### users
 `id` PK · `username` UK · `password_hash` (bcrypt) · `full_name` · `role`
@@ -74,16 +79,36 @@ visits         ─── attachments.visit_id (nullable)
 `visits(case_id)`, `attachments(patient_id)`, and
 `patients(name|phone|reg_no|place)`.
 
-## Migration story — ⚠️ gap
+## Migration framework (backlog F1 — delivered, Sprint 0)
 
-Schema is **create-if-not-exists only**. There is **no version table and no
-`ALTER TABLE` path**. Adding *new tables* is safe (auto-created); **changing an
-existing table's columns has no upgrade path**. Closing this is backlog **F1**
-and the recommended next code phase — see [`ROADMAP.md`](./ROADMAP.md).
+Schema changes are managed by `app/core/migrations/`:
+
+- **`schema_version` ledger** records every applied migration (`version`, `name`,
+  `applied_at`).
+- **Ordered, forward-only, idempotent runner.** `migrate(conn)` applies pending
+  `vNNNN_*` migrations in ascending order, each stamped atomically with its DDL,
+  and never re-applies one already recorded. Running it twice is a no-op.
+- **Baseline `0001_initial`** is the behaviour-preserving conversion of the
+  former inline `SCHEMA`. Because it is create-if-not-exists, applying it to a
+  **legacy** clinic database simply stamps it at version 1 — no data touched.
+- **Rollback support.** `rollback_to(conn, version)` runs each migration's
+  `down` script in reverse. Used by tests and recovery; production upgrades are
+  forward-only.
+
+**Rule (Constitution Art. IV §2):** every new migration must be **additive and
+idempotent** — `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE … ADD COLUMN` — and
+must **never** drop or rename a column an older build reads.
+
+### Adding a migration
+
+1. Add `app/core/migrations/vNNNN_<name>.py` exporting a
+   `MIGRATION = Migration(version=N, name="…", up="…", down="…")`.
+2. Append it to `MIGRATIONS` in `registry.py` (validated to be sequential from 1).
+3. Add its table(s) to this doc and a model/table-parity test where applicable.
 
 ## Planned tables (not yet created)
 
 `appointments`, `queue`, `roles`/`permissions`, `invoices`/`invoice_items`/
 `payments`, `dispense_*`, `inventory_*`, `protocols`/`protocol_items`,
 `ocr_results`, `messages`/`message_templates`, telemedicine `sessions`. Each
-arrives with its module via a migration (once F1 lands).
+arrives with its module as a new migration.
