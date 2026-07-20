@@ -1,0 +1,42 @@
+# ── Python ───────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+*.spec
+.venv/
+venv/
+env/
+
+# ── Wise PMS runtime data — NEVER commit patient data or backups ──
+/data/*
+/backups/*
+/attachments/*
+/exports/*
+/logs/*
+# keep the folders themselves in the tree
+!/data/.gitkeep
+!/backups/.gitkeep
+!/attachments/.gitkeep
+!/exports/.gitkeep
+!/logs/.gitkeep
+
+# SQLite database files (anywhere)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# ── OS / editors ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

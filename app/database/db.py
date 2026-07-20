@@ -10,9 +10,12 @@ import sqlite3
 import bcrypt
 
 # ------------------------------------------------------------------
-# Paths — everything lives next to the application folder
+# Paths — everything lives next to the application folder.
+# Set the WISE_PMS_HOME environment variable to relocate all runtime
+# data (used by the desktop packaging and by the test suite for an
+# isolated data directory). Default behaviour is unchanged.
 # ------------------------------------------------------------------
-BASE_DIR = os.path.dirname(
+BASE_DIR = os.environ.get("WISE_PMS_HOME") or os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 )
 DATA_DIR = os.path.join(BASE_DIR, "data")
