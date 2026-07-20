@@ -4,6 +4,21 @@
 > Add an ADR whenever a phase makes a structural choice.
 > **Last updated:** 2026-07-20. See also [`.ai/DECISION_LOG.md`](../.ai/DECISION_LOG.md).
 
+## ADR-0008 — Ordered, idempotent schema migrations with a version ledger
+**Status:** Accepted (Sprint 0 / F1). Schema DDL is owned by
+`app/core/migrations/`: a `schema_version` ledger table plus a forward-only
+runner that applies numbered `vNNNN_*` migrations in order, exactly once, and
+supports rollback via each migration's `down` script. `init_db()` migrates then
+seeds. The former inline `SCHEMA` became migration `0001_initial`.
+**Why:** Create-if-not-exists could add *tables* but had **no path to change an
+existing table**, blocking Settings, RBAC, Appointments, Protocols, OCR,
+Billing, and Inventory. Migrations must be additive/idempotent
+(`... IF NOT EXISTS`, `ADD COLUMN`) so applying them onto a live clinic database
+is a safe no-op that only stamps its version — never dropping or renaming a
+column an older build reads (Constitution Art. IV §2).
+**Consequence:** The regression golden's `TABLES` list gains the internal
+`schema_version` table (documented, no service-behaviour change).
+
 ## ADR-0007 — Documentation is part of implementation (Project Memory System)
 **Status:** Accepted (Phase 1). Establish `docs/`, `docs/modules/`, and `.ai/`
 as living memory, updated in the same commit as any behavior change.

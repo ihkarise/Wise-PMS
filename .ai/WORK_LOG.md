@@ -2,6 +2,50 @@
 
 > Append an entry per work session. Newest first. **Updated:** 2026-07-20.
 
+## 2026-07-20 — Sprint 0: Infrastructure Foundation (DB Migrations / F1)
+**Branch:** `claude/wiseos-health-sprint-exec-w2jjvh`
+
+### Phase 0 (targeted re-grounding)
+- Read only what the sprint needed: `.ai/CURRENT_PHASE.md`, `NEXT_TASK.md`,
+  `WORK_LOG.md`, `ARCHITECTURE_RULES.md`, `NEXT_PHASE.md`; `specs/
+  IMPLEMENTATION_PLAN.md`; `app/core/{database,model,repository}.py`,
+  `bootstrap.py`, `config/paths.py`; the four existing tests; `docs/DATABASE.md`.
+- Confirmed baseline green (`python3 -m pytest -q` → 4 passing) before changes.
+
+### Implementation
+- New `app/core/migrations/` package (single-responsibility, DI'd connection):
+  - `runner.py` — `Migration` dataclass, `MigrationError`, and the engine
+    (`ensure_version_table`, `applied_versions`, `current_version`,
+    `run_migrations`, `rollback`). Each migration stamped atomically with its DDL.
+  - `registry.py` — ordered `MIGRATIONS` tuple, validated sequential-from-1.
+  - `v0001_initial.py` — the former inline `SCHEMA` moved verbatim into `up`
+    (create-if-not-exists → legacy DBs are no-op-stamped), with a child-first
+    reversible `down`.
+  - `__init__.py` — public API (`migrate`, `rollback_to`, `current_version`,
+    `LATEST_VERSION`, …).
+- `app/core/database.py` — removed the inline `SCHEMA`; `init_db()` now calls
+  `migrate(conn)` then seeds admin + settings (seed kept in Python: bcrypt salt is
+  non-deterministic, can't be static SQL). No duplicate schema logic left behind.
+- `tests/test_migrations.py` — 12 tests: ledger basics, apply/stamp, idempotency,
+  apply-only-pending, **legacy-DB stamping w/o data loss**, rollback-to-zero +
+  re-apply, rollback no-op, partial rollback, irreversible/unknown-version raise,
+  **fresh == migrated parity**, and an `init_db` integration/idempotency test.
+- Regression golden: `TABLES` line now lists `schema_version` (documented
+  intentional addition — ADR-0008; no service-behaviour change).
+
+### Docs (same commit)
+- `docs/DATABASE.md` — replaced the ⚠️ migration-gap section with the delivered
+  framework + "how to add a migration"; source-of-truth now the migration set.
+- `docs/DECISIONS.md` — **ADR-0008** (ordered idempotent migrations + ledger).
+- `docs/CHANGELOG.md`, `docs/KNOWN_LIMITATIONS.md` (L1 closed),
+  `.ai/KNOWN_ISSUES.md` (F1 closed), `CURRENT_PHASE.md`, `NEXT_TASK.md`.
+
+### Result
+- `python3 -m pytest -q` → **16 passing** (4 prior + 12 new).
+- Verified `import app.bootstrap` + `init_db()` boot; ledger stamped at v1.
+- Committed + pushed to the feature branch. **No PR** (charter). Awaiting Product
+  Owner approval before Sprint 1 (proposed: Settings UI / F2).
+
 ## 2026-07-20 — Phase 2: Product Architecture & Clinical Workflow Design
 **Branch:** `claude/wiseos-phase-2-architecture-6knli6`
 

@@ -6,6 +6,21 @@ All notable changes to WiseOS Health / Wise PMS. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **DB Migration Framework (Sprint 0 / backlog F1).** New
+  `app/core/migrations/` package: an ordered, forward-only, idempotent migration
+  runner with a `schema_version` ledger table and rollback support. `init_db()`
+  now brings the database up to the latest schema version before seeding.
+  Migration `0001_initial` is the behaviour-preserving conversion of the former
+  inline `SCHEMA`. Legacy databases are stamped at their current version with no
+  data loss (baseline is create-if-not-exists). New `tests/test_migrations.py`
+  covers idempotency, legacy stamping, rollback, and a fresh-vs-migrated parity
+  check. Closes the L1 / F1 schema-versioning gap.
+
+### Changed
+- **Regression golden** (`tests/test_regression.py`) `TABLES` line now includes
+  the new internal `schema_version` ledger table. Intentional, documented schema
+  addition (no service-layer behaviour change) — see ADR-0008.
+
 - **Project Memory System (Phase 1).** Full `docs/` product & system
   documentation set, `docs/modules/` per-module docs (built + planned), and
   `.ai/` machine-facing memory files (context, phases, rules, logs). No runtime

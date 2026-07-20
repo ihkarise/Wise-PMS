@@ -9,7 +9,7 @@
 
 | # | Limitation | Impact | Backlog |
 | - | ---------- | ------ | ------- |
-| L1 | **No DB migrations / schema versioning.** Create-if-not-exists only; no `ALTER TABLE` path. | Adding a *column* to an existing table has no upgrade path (new *tables* are fine). Highest-severity gap. | F1 |
+| ~~L1~~ | ~~No DB migrations / schema versioning.~~ **Closed (Sprint 0, F1):** `app/core/migrations/` — `schema_version` ledger + ordered idempotent runner with rollback; see [`DATABASE.md`](./DATABASE.md#migration-framework-backlog-f1--delivered-sprint-0). | — | ✅ F1 |
 | L2 | **Date handling is string-based** (`YYYY-MM-DD` typed by hand). | No validation; `followup_date` typos stored silently. | F5 |
 | L3 | **Doctor is not a modeled entity.** `patients.doctor` is free text; `doctor_id` is the acting user. | Can't report per-doctor cleanly. | — |
 

@@ -5,8 +5,9 @@
 > **Updated:** 2026-07-20.
 
 ## Must-fix foundation (block future modules)
-- **F1 — No DB migrations / schema versioning.** Create-if-not-exists only; no
-  `ALTER TABLE` path. Recommended Phase 2. (Ref: L1)
+- **F1 — ✅ Closed (Sprint 0).** DB migration framework delivered:
+  `app/core/migrations/` — `schema_version` ledger + ordered, idempotent,
+  forward-only runner with rollback; baseline `0001_initial`. (Was Ref: L1)
 - **F3 — No RBAC.** `users.role` decorative; any user can do anything. (L4)
 - **F7 — No encryption at rest.** DB/attachments/backups plaintext. (L5)
 - **F2 — No Settings UI.** `settings` table unused; blocks Printer/WhatsApp. (L7)
