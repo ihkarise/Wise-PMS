@@ -11,9 +11,11 @@
       planning specs
 - [x] Documentation consistency review (links resolve; naming/backlog refs
       consistent)
+- [x] Convert approved specs → structured implementation backlog
+      (`specs/backlog/`: 22 epic docs + README index; MASTER_BACKLOG updated)
 - [x] Verify `python3 -m pytest -q` green (docs-only, confirmed 4 passing)
-- [ ] Commit on `claude/wiseos-phase-2-architecture-6knli6` and push
-- [ ] Deliver phase-end report; **await Product Owner approval** (no PR)
+- [x] Commit on `claude/wiseos-phase-2-architecture-6knli6` and push (PR #3)
+- [ ] Deliver phase-end report; **await Product Owner approval**
 
 ## Blocked on
 Product Owner approval before starting any Phase 3 **implementation**.

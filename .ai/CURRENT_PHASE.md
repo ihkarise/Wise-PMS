@@ -24,6 +24,10 @@ only.
 - Platform: `USER_ROLES.md`, `SETTINGS_SYSTEM.md`, `PATIENT_PORTAL.md`,
   `AI_ASSISTANT.md`.
 - Planning: `IMPLEMENTATION_PLAN.md`, `MASTER_PHASE_PLAN.md`.
+- Implementation backlog: `specs/backlog/` — 22 epic documents + README index,
+  each broken into features → user stories → engineering tasks → dependencies →
+  acceptance criteria → regression tests → rollout phases → rollback → DoD.
+  `docs/MASTER_BACKLOG.md` updated with the epic map.
 
 ## Explicitly NOT in scope
 - **No runtime code changes.** No schema, service, view, or route is modified.

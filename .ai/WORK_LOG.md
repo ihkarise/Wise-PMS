@@ -2,6 +2,25 @@
 
 > Append an entry per work session. Newest first. **Updated:** 2026-07-20.
 
+## 2026-07-20 — Phase 2 (cont.): Implementation Backlog from specs
+**Branch:** `claude/wiseos-phase-2-architecture-6knli6` · PR #3
+
+- Converted the approved specs into a structured, executable backlog under
+  `specs/backlog/`: **22 epic implementation documents + a README epic index**.
+- Each epic doc decomposes into: features → user stories (`As a… I want… so
+  that…`) → engineering tasks → dependencies → acceptance criteria (Given/When/
+  Then) → regression tests (existing-green + new) → rollout phases → rollback →
+  definition of done.
+- Epics aligned to `MASTER_PHASE_PLAN` stages A–E and cross-referenced to backlog
+  IDs (F1–F8, C1–C6, D1–D3, E1–E2, B1–B5, A1–A3). ID conventions: `EPIC-NN`,
+  `ENN-Fk`, `ENN-Fk-Sm`, `ENN-Tk`, `ENN-Rk`.
+- Updated `docs/MASTER_BACKLOG.md` with the epic map (links to each epic doc);
+  preserved the existing flat item table. F5 folds into EPIC-10; F6 into
+  EPIC-04/08.
+- Consistency review: all relative links across `specs/` + `specs/backlog/`
+  resolve; MASTER_BACKLOG epic links resolve; all 22 epic files present.
+- **No production code.** `python3 -m pytest -q` → 4 passing.
+
 ## 2026-07-20 — Phase 2: Product Architecture & Clinical Workflow Design
 **Branch:** `claude/wiseos-phase-2-architecture-6knli6`
 
