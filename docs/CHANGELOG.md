@@ -1,0 +1,48 @@
+# Changelog
+
+All notable changes to WiseOS Health / Wise PMS. Format loosely follows
+[Keep a Changelog](https://keepachangelog.com/). Newest first.
+
+## [Unreleased]
+
+### Added
+- **Project Memory System (Phase 1).** Full `docs/` product & system
+  documentation set, `docs/modules/` per-module docs (built + planned), and
+  `.ai/` machine-facing memory files (context, phases, rules, logs). No runtime
+  code changed; the app is unaffected.
+
+## Architecture Refactor (PR #1, merged)
+
+### Changed
+- Reorganized the codebase from screen-oriented (`app/ui`, `app/services`,
+  `app/database`) to **domain-driven vertical-slice modules**
+  (`app/modules/<domain>/` with `models → repository → service → controller →
+  view`).
+- Introduced `app/core/` (database, router, base repository, base model),
+  `app/config/` (paths, constants), `app/shared/` (theme, shell, widgets),
+  `app/utils/` (prescription extraction).
+- Replaced the hand-rolled `if/elif` router in `main.py` with a centralized
+  regex `Router`; `main.py` is now a thin entrypoint to `app.bootstrap.run()`.
+- Added `models` and `repository` layers; services delegate SQL to repositories.
+
+### Added
+- `.gitignore`, `.gitkeep` for runtime dirs, `requirements-dev.txt`.
+- Test suite: regression golden, model/table parity, view-build, router-contract.
+- `docs/ARCHITECTURE.md`, `docs/TARGET_ARCHITECTURE.md`, `docs/DEPENDENCY_MAP.md`.
+
+### Removed
+- Malformed literal-brace directories; compatibility shims (final cleanup).
+
+## Sprint 2
+
+### Added
+- Case Records (multiple cases per patient), Visit Entry (narrative editors),
+  Prescription intelligence (regex extraction), Patient Timeline, Attachments,
+  Profile tabs, Dashboard visits/follow-ups, backup includes attachments.
+
+## Sprint 1
+
+### Added
+- Login (`admin`/`admin123`), Registration (auto reg-no `P000001…`), real-time
+  Patient Search, Patient Profile, Dashboard, one-click Backup, Audit log,
+  soft-delete for patients.
