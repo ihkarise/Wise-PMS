@@ -1,36 +1,49 @@
 # .ai/CURRENT_PHASE.md
 
-**Phase:** 1 — Project Memory System
-**Status:** In progress → completing this commit
-**Branch:** `claude/wiseos-health-architecture-1yumsy`
+**Phase:** 2 — Product Architecture & Clinical Workflow Design
+**Status:** Complete → committing; awaiting Product Owner approval before Phase 3
+**Branch:** `claude/wiseos-phase-2-architecture-6knli6`
 **Updated:** 2026-07-20
 
 ## Goal
-Establish the full project memory system mandated by the charter, grounded in the
-actual codebase, so every future phase has durable context and updates docs as
-part of implementation.
+Design the complete clinical workflow and every planned module **before** writing
+feature code — the product blueprint. No implementation, no schema changes, no
+migrations, no refactoring, no UI code. Specifications and product architecture
+only.
 
 ## Scope (this phase)
-- `docs/` — product & system docs (vision, roadmap, backlog, changelog, system
-  overview, database, API, clinical workflow, patient journey, UI/design system,
-  security, deployment, testing, known limitations, decisions, lessons).
-- `docs/modules/` — one doc per module: **built** modules documented from code;
-  **planned** modules as clearly-labeled design specs (no false claims of code).
-- `.ai/` — machine-facing memory (this set).
+- New `specs/` directory with 21 detailed specification documents + a README index.
+- Foundation: `PRODUCT_CONSTITUTION.md` (permanent rulebook), `SCREEN_FLOW.md`,
+  `PATIENT_FLOW.md`.
+- Clinical workflow: `CONSULTATION_WORKSPACE.md` (anchor), `NEW_CASE_WORKFLOW.md`,
+  `FOLLOWUP_WORKFLOW.md`.
+- Engines: `PROTOCOL_ENGINE.md`, `INVESTIGATION_ENGINE.md`, `OCR_ENGINE.md`,
+  `TIMELINE_ENGINE.md`.
+- Systems: `WHATSAPP_SYSTEM.md`, `PRINTER_SYSTEM.md`, `DISPENSING_SYSTEM.md`,
+  `APPOINTMENT_SYSTEM.md`, `WAITING_QUEUE.md`.
+- Platform: `USER_ROLES.md`, `SETTINGS_SYSTEM.md`, `PATIENT_PORTAL.md`,
+  `AI_ASSISTANT.md`.
+- Planning: `IMPLEMENTATION_PLAN.md`, `MASTER_PHASE_PLAN.md`.
 
 ## Explicitly NOT in scope
 - **No runtime code changes.** No schema, service, view, or route is modified.
 - No new module implementation. The app's behavior is unchanged.
 
 ## Definition of done
-- All charter-listed docs exist and are accurate to the current code.
-- Planned-vs-built status is honest in every module doc.
-- `pytest -q` still green (docs-only change cannot affect it, but verify).
-- Phase-end report produced; awaiting Product Owner approval for Phase 2.
+- All 21 charter-required specs exist under `specs/`, consistent with the memory
+  system (`docs/`, `.ai/`) and subordinate to the Product Constitution.
+- Internal links resolve; naming/module/backlog references are consistent.
+- `python3 -m pytest -q` green (docs-only change; verified 4 passing).
+- Phase-end report produced; awaiting Product Owner approval for Phase 3.
 
 ## Verification
 ```bash
-pytest -q     # expect green — unchanged behavior
+python3 -m pytest -q     # expect green (4 passing) — unchanged behavior
 ```
 
-See [`NEXT_PHASE.md`](./NEXT_PHASE.md) for the proposed Phase 2.
+> Note: the `pytest` on PATH here runs under a uv-isolated interpreter without
+> the app's runtime deps; use `python3 -m pytest` (installs from
+> `requirements-dev.txt`).
+
+See [`NEXT_PHASE.md`](./NEXT_PHASE.md) for the proposed Phase 3 (implementation
+begins with Migrations / F1).

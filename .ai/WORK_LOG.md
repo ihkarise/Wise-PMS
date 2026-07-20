@@ -2,6 +2,50 @@
 
 > Append an entry per work session. Newest first. **Updated:** 2026-07-20.
 
+## 2026-07-20 — Phase 2: Product Architecture & Clinical Workflow Design
+**Branch:** `claude/wiseos-phase-2-architecture-6knli6`
+
+### Phase 0 (re-grounding)
+- Re-read the whole memory system before writing: `README.md`, all of `docs/`
+  (vision, roadmap, backlog, architecture/target/dependency, database, API,
+  clinical workflow, patient journey, design system, UI, security, deployment,
+  testing, known limitations, decisions, lessons), all of `docs/modules/` (10
+  built + 13 planned), all of `.ai/`, and the `app/` tree layout + constants.
+- Confirmed: refactor + Phase 1 memory already complete; no runtime code to touch.
+
+### Phase 2 (this session)
+- Created `specs/` with **21 required specs + a README index** (22 files):
+  - Foundation: `PRODUCT_CONSTITUTION.md` (permanent rulebook — all specs
+    subordinate to it), `SCREEN_FLOW.md`, `PATIENT_FLOW.md`.
+  - Clinical workflow: `CONSULTATION_WORKSPACE.md` (anchor feature),
+    `NEW_CASE_WORKFLOW.md`, `FOLLOWUP_WORKFLOW.md`.
+  - Engines: `PROTOCOL_ENGINE.md`, `INVESTIGATION_ENGINE.md`, `OCR_ENGINE.md`,
+    `TIMELINE_ENGINE.md`.
+  - Systems: `WHATSAPP_SYSTEM.md`, `PRINTER_SYSTEM.md`, `DISPENSING_SYSTEM.md`,
+    `APPOINTMENT_SYSTEM.md`, `WAITING_QUEUE.md`.
+  - Platform: `USER_ROLES.md`, `SETTINGS_SYSTEM.md`, `PATIENT_PORTAL.md`,
+    `AI_ASSISTANT.md`.
+  - Planning: `IMPLEMENTATION_PLAN.md`, `MASTER_PHASE_PLAN.md` (Stages A–E,
+    Phases 2–22 with objectives/deliverables/deps/complexity/risk/manual-test/
+    rollback/future hooks).
+- Grounded every spec in the existing architecture (vertical slices, repository
+  seam, narrative-first, offline-first, ₹0), backlog IDs (F1/F2/F3/F5/F7/F8, C1–
+  C4, D1–D3, E1, B1–B5, A1–A3), and the future-product list.
+- **No runtime code touched.** Docs-only change.
+
+### Consistency review
+- All relative links across `specs/` resolve (script-checked).
+- All 21 required filenames present; local cross-refs use `./NAME.md`, doc refs
+  use `../docs/...`.
+- Backlog-ID usage consistent with the memory system (F1 dominant unlock).
+
+### Result
+- `python3 -m pytest -q` → **4 passing** (the PATH `pytest` uses a uv-isolated
+  interpreter missing runtime deps; use `python3 -m pytest`).
+- Updated `.ai/CURRENT_PHASE.md`, `.ai/NEXT_TASK.md`, and this log.
+- Phase-end report delivered; awaiting Product Owner approval for Phase 3
+  (proposed: Migrations / F1). No PR opened, per instruction.
+
 ## 2026-07-20 — Phase 1: Project Memory System
 **Branch:** `claude/wiseos-health-architecture-1yumsy`
 
