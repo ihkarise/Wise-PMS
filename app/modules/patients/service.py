@@ -7,7 +7,7 @@ from app.modules.patients.repository import PATIENT_FIELDS, PatientRepository
 
 _repo = PatientRepository()
 
-# Re-exported for backwards compatibility (was app.services.patient_service.PATIENT_FIELDS).
+# PATIENT_FIELDS is re-exported here as the module's public writable-field list.
 __all__ = [
     "PATIENT_FIELDS", "create_patient", "update_patient", "deactivate_patient",
     "get_patient", "search_patients", "recent_patients", "patient_stats",

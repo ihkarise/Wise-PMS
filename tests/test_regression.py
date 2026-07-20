@@ -54,14 +54,14 @@ def build_snapshot():
     c.close()
 
     # 2. Authentication
-    from app.services.auth_service import authenticate
+    from app.modules.authentication.service import authenticate
     p("AUTH_ok:", (authenticate("admin", "admin123") or {}).get("username"))
     p("AUTH_bad:", authenticate("admin", "wrong"))
     p("AUTH_empty:", authenticate("", ""))
     uid = authenticate("admin", "admin123")["id"]
 
     # 3. Patients
-    from app.services import patient_service as ps
+    from app.modules.patients import service as ps
     a = ps.create_patient({"name": "Alice Kumar", "age": 30, "gender": "Female",
                            "phone": "9990001111", "place": "Kochi"}, uid)
     b = ps.create_patient({"name": "Bob Nair", "age": 45, "gender": "Male",
@@ -76,7 +76,7 @@ def build_snapshot():
     p("AFTER_UPDATE_place:", ps.get_patient(a["id"])["place"])
 
     # 4. Cases
-    from app.services import case_service as cs
+    from app.modules.cases import service as cs
     cid = cs.create_case(a["id"], {"case_title": "Migraine",
                                    "diagnosis": "Chronic",
                                    "case_notes": "long notes",
@@ -86,7 +86,7 @@ def build_snapshot():
                              for x in cs.cases_for_patient(a["id"])])
 
     # 5. Visits + prescription extraction
-    from app.services import visit_service as vs
+    from app.modules.visits import service as vs
     rx = "Bell 200\nBry 30 TDS\nContinue medicine\nReview after 15 days\nNux Vomica 1M"
     items = vs.extract_prescription_items(rx)
     p("EXTRACT:", [(i["medicine_name"], i["potency"], i["dosage"])
@@ -105,13 +105,13 @@ def build_snapshot():
     p("CASE_VISIT_COUNT_NOW:", cs.cases_for_patient(a["id"])[0]["visit_count"])
 
     # 6. Timeline
-    from app.services import timeline_service as ts
+    from app.modules.timeline import service as ts
     tl = ts.timeline_for_patient(a["id"])
     p("TIMELINE_KINDS:", [e["kind"] for e in tl])
     p("TIMELINE_TITLES:", [e["title"] for e in tl])
 
     # 7. Attachments
-    from app.services import attachment_service as at
+    from app.modules.attachments import service as at
     src = os.path.join(_TMP_HOME, "lab.pdf")
     with open(src, "w") as fh:
         fh.write("dummy")
@@ -121,7 +121,7 @@ def build_snapshot():
                        for x in at.attachments_for_patient(a["id"])])
 
     # 8. Backup
-    from app.services import backup_service as bk
+    from app.modules.backup import service as bk
     bp = bk.backup_now()
     with zipfile.ZipFile(bp) as z:
         names = sorted(z.namelist())

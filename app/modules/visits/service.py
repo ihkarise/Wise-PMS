@@ -14,8 +14,8 @@ from app.utils.prescription import extract_prescription_items
 
 _repo = VisitRepository()
 
-# extract_prescription_items is re-exported for backwards compatibility
-# (was app.services.visit_service.extract_prescription_items, used by the UI).
+# extract_prescription_items is re-exported so the visit view can render the
+# live "detected medicines" panel from the same helper the service uses.
 __all__ = [
     "extract_prescription_items", "create_visit", "update_visit", "get_visit",
     "visits_for_patient", "prescription_items_for_visit", "visit_stats",
