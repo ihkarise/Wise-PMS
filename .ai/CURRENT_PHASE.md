@@ -1,49 +1,50 @@
 # .ai/CURRENT_PHASE.md
 
-**Phase:** Sprint 0 — Infrastructure Foundation (DB Migrations / backlog F1)
-**Status:** Complete → committed; awaiting Product Owner approval before Sprint 1
-**Branch:** `claude/wiseos-health-sprint-exec-w2jjvh`
+**Phase:** Sprint 1 — Consultation Workspace Skeleton (backlog C1)
+**Status:** Complete → committed; awaiting Product Owner approval before Sprint 2
+**Branch:** `claude/consultation-workspace-skeleton-qi1nfx`
 **Updated:** 2026-07-20
 
 ## Goal
-Deliver the schema-migration foundation that unlocks every future module. No
-business logic, no user-facing features — infrastructure only.
+Build the **structural foundation** of the Consultation Workspace — the central
+screen of WiseOS Health. Framework only: layout, navigation, and honest
+placeholders. **No** business logic, OCR, AI, Protocol Engine, WhatsApp,
+Billing, Dispensing, or Investigation processing.
 
 ## Scope (this sprint)
-- New `app/core/migrations/` package:
-  - `runner.py` — `Migration` dataclass + engine (`ensure_version_table`,
-    `current_version`, `applied_versions`, `run_migrations`, `rollback`,
-    `MigrationError`).
-  - `registry.py` — the ordered, self-validating `MIGRATIONS` tuple.
-  - `v0001_initial.py` — the baseline (former inline `SCHEMA`) + reversible down.
-  - `__init__.py` — public API (`migrate`, `rollback_to`, `current_version`, …).
-- `schema_version` ledger table (version · name · applied_at).
-- `init_db()` now migrates then seeds (admin + settings unchanged).
-- `tests/test_migrations.py` — idempotency, legacy stamping, rollback,
-  fresh-vs-migrated parity, registry validation, init_db integration.
-- Docs: `DATABASE.md`, `DECISIONS.md` (ADR-0008), `CHANGELOG.md`,
-  `KNOWN_LIMITATIONS.md`, `.ai/` state files.
+- New `app/modules/consultation/` vertical slice — **composition-only** (no
+  table, no `models.py`, no `repository.py`, no SQL):
+  - `service.py` — `workspace_context(pid, cid)`, read-only composition over
+    `patients`/`cases` services.
+  - `controller.py` — `workspace_controller` + `ROUTES`; parses the optional
+    draft-visit sentinel and `?section=` deep-link.
+  - `view.py` — the workspace layout: shell header · left section-nav rail ·
+    center section cards · right placeholder panels · bottom status/action bar.
+- Layout regions: Top header (shared shell) · Left sidebar (section nav) · Main
+  workspace (Patient Summary, Chief Complaint, History, Diagnosis, Prescription,
+  Remarks, Follow-up) · Right panel (Timeline, Investigations, OCR, Protocol
+  Suggestions, AI Assistant — placeholders) · Bottom bar (Print, Invoice,
+  Dispense, WhatsApp, Complete Visit — disabled placeholders).
+- Shared additions: `widgets.disabled_button`, `widgets.placeholder_card`,
+  optional `theme.card(border=…)`.
+- Navigation: `bootstrap.py` registers the routes; `cases/view.py` gains a
+  **Start Consultation** entry point.
+- Tests: router-contract + view-build extended to cover the new route/view.
 
 ## Explicitly NOT in scope
-- No Settings, Consultation Workspace, RBAC, or any other module.
-- No new domain tables; no business-logic change. Baseline schema is byte-for-byte
-  the prior schema (create-if-not-exists), so existing databases are untouched
-  except for being stamped at version 1.
+- No persistence/autosave, no visit finalization, no feeder-module calls.
+- No OCR, AI, Protocol Engine, WhatsApp, Billing, Dispensing, Investigation.
+- No new tables and **no migration** — Sprint 0 DB infrastructure untouched.
 
 ## Definition of done
-- `python3 -m pytest -q` green (**16 passing**: 4 prior + 12 new).
-- Regression golden updated for the internal `schema_version` table (documented
-  in ADR-0008; no service-behaviour change).
-- App imports and `init_db()` boot verified; migration ledger stamped.
-- Every affected doc updated in the same commit.
+- `python3 -m pytest -q` green (**16 passing**; regression golden byte-identical).
+- Workspace opens, navigation works, panels render, disabled buttons render.
+- Every affected doc updated in the same commit. Committed + pushed; **no PR**.
 
 ## Verification
 ```bash
+python3 -m pip install -r requirements-dev.txt
 python3 -m pytest -q     # expect 16 passing
 ```
 
-> Note: install dev deps first (`python3 -m pip install -r requirements-dev.txt`);
-> the bare `pytest` on PATH runs under a uv-isolated interpreter without runtime
-> deps — use `python3 -m pytest`.
-
-See [`NEXT_TASK.md`](./NEXT_TASK.md) for the proposed Sprint 1 (Settings UI / F2).
+See [`NEXT_TASK.md`](./NEXT_TASK.md) for the proposed next sprint.

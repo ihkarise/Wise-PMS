@@ -39,6 +39,7 @@ def _setup():
     from app.config import paths
     from app.core.database import init_db
     from app.modules.authentication.service import authenticate
+    from app.modules.cases.service import create_case
     from app.modules.patients.service import create_patient
 
     if os.path.exists(paths.DB_PATH):
@@ -46,11 +47,12 @@ def _setup():
     init_db()
     uid = authenticate("admin", "admin123")["id"]
     p = create_patient({"name": "Rt Test", "age": 22, "gender": "Female"}, uid)
-    return uid, p["id"]
+    cid = create_case(p["id"], {"case_title": "Migraine", "status": "Open"}, uid)
+    return uid, p["id"], cid
 
 
 def test_router_contract():
-    uid, pid = _setup()
+    uid, pid, cid = _setup()
     user = {"id": uid, "full_name": "Administrator", "role": "Admin",
             "username": "admin"}
 
@@ -65,6 +67,16 @@ def test_router_contract():
         (f"/patient/{pid}/case/new", user, f"/patient/{pid}/case"),
         (f"/patient/{pid}/case/1", user, f"/patient/{pid}/case"),
         (f"/patient/{pid}/visit/new?case=1", user, f"/patient/{pid}/visit"),
+        # Consultation Workspace (Sprint 1): base, draft-visit, existing-visit,
+        # and ?section= deep-link all resolve to the canonical workspace route.
+        (f"/patient/{pid}/case/{cid}/workspace", user,
+         f"/patient/{pid}/case/{cid}/workspace"),
+        (f"/patient/{pid}/case/{cid}/workspace/visit/new", user,
+         f"/patient/{pid}/case/{cid}/workspace"),
+        (f"/patient/{pid}/case/{cid}/workspace/visit/7", user,
+         f"/patient/{pid}/case/{cid}/workspace"),
+        (f"/patient/{pid}/case/{cid}/workspace?section=diagnosis", user,
+         f"/patient/{pid}/case/{cid}/workspace"),
         ("/totally/unknown", user, "/dashboard"),  # fallback
     ]
     for route, who, expected in cases:

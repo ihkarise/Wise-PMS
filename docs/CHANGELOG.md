@@ -6,6 +6,22 @@ All notable changes to WiseOS Health / Wise PMS. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Consultation Workspace skeleton (Sprint 1 / backlog C1).** New
+  `app/modules/consultation/` vertical slice — the structural foundation of the
+  central consultation screen. Composition-only (no table, no SQL, no business
+  logic): a read-only `workspace_context` service over `patients`/`cases`, a
+  controller registering the route
+  `/patient/<pid>/case/<cid>/workspace(/visit/<new|vid>)?` (with `?section=`
+  deep-link), and a `workspace_view` laying out a left section-nav rail, a
+  center column of section cards (Patient Summary shows real read-only data;
+  Chief Complaint / History / Diagnosis / Prescription / Remarks / Follow-up are
+  placeholders), a right rail of placeholder context panels (Timeline /
+  Investigations / OCR / Protocol Suggestions / AI Assistant), and a bottom
+  status/action bar with **disabled** terminal actions (Print / Invoice /
+  Dispense / WhatsApp / Complete Visit). Reachable from the Case Record via a new
+  **Start Consultation** button. New shared widgets `disabled_button` and
+  `placeholder_card`, and an optional `border` argument on `theme.card`. Router
+  contract and view-build smoke tests extended to cover the new route and view.
 - **DB Migration Framework (Sprint 0 / backlog F1).** New
   `app/core/migrations/` package: an ordered, forward-only, idempotent migration
   runner with a `schema_version` ledger table and rollback support. `init_db()`
