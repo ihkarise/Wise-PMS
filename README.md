@@ -46,20 +46,48 @@ The design system uses Poppins. If Poppins isn't installed on the laptop,
 Windows falls back to a default font automatically. To get the exact look,
 install Poppins (free on Google Fonts) once.
 
-## Folder map
+## Folder map (domain-driven, Sprint 2 architecture refactor)
 ```
-WisePMS/
-├── main.py              ← start here
-├── requirements.txt
-├── app/
-│   ├── ui/              ← login, dashboard, registration, search, profile
-│   ├── services/        ← auth, patient, backup, audit
-│   └── database/db.py   ← creates wise_pms.db automatically
-├── data/wise_pms.db     ← all patient data (created on first run)
-├── backups/             ← zip backups
-├── attachments/         ← ready for Sprint 2
-└── exports/
+Wise-PMS/
+├── main.py                     ← thin entrypoint → app.bootstrap.run()
+├── requirements.txt            ← runtime deps (flet, bcrypt)
+├── requirements-dev.txt        ← + pytest for the test suite
+├── docs/                       ← architecture audit (see below)
+├── tests/                      ← behavioral + structural test suite
+└── app/
+    ├── bootstrap.py            ← composition root: init DB, wire router, launch
+    ├── config/                 ← paths.py (WISE_PMS_HOME) · constants.py
+    ├── core/                   ← database.py · model.py · repository.py · router.py
+    ├── shared/                 ← theme.py (design system) · shell.py · widgets.py
+    ├── utils/                  ← prescription.py (pure helpers)
+    └── modules/                ← one folder per BUSINESS module
+        ├── authentication/     ← models · repository · service · controller · view
+        ├── patients/           ← …incl. views/ (search, profile, edit)
+        ├── registration/  cases/  visits/  attachments/
+        ├── timeline/  dashboard/  audit/  backup/
+        └── (Appointments, Billing, Inventory/WHIMS, … added the same way)
 ```
+Each module is a self-contained vertical slice
+(`models → repository → service → controller → view`). Runtime data lives under
+`data/`, `backups/`, `attachments/`, `exports/`, `logs/` (created on first run;
+relocate with the `WISE_PMS_HOME` environment variable).
+
+## Architecture docs
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — full audit: startup, routing,
+  UI hierarchy, DB schema (ERD), services, data flow, patterns, tech debt,
+  scalability.
+- [`docs/DEPENDENCY_MAP.md`](docs/DEPENDENCY_MAP.md) — module dependency graph.
+- [`docs/TARGET_ARCHITECTURE.md`](docs/TARGET_ARCHITECTURE.md) — target layers,
+  module registry, future-product mapping, and how to add a new module.
+
+## Developer setup & tests
+```
+pip install -r requirements-dev.txt
+pytest -q                 # regression (behavior), model/table parity,
+                          # view-build, and router-contract tests
+```
+The test suite runs against an isolated temporary data directory and never
+touches real clinic data.
 
 Sprint 3 will add the Waiting Queue, Booking, and Online Consultation modules
-on top of this foundation.
+by dropping new folders under `app/modules/` — no changes to existing modules.
