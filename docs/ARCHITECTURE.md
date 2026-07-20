@@ -1,10 +1,12 @@
 # Wise PMS — Architecture Audit (Sprint 2 / As-Built)
 
 > **Status:** As-built snapshot of the repository **before** the Sprint 2
-> architecture refactor. This document describes the system exactly as it
-> exists today. The target structure and migration are in
-> [`TARGET_ARCHITECTURE.md`](./TARGET_ARCHITECTURE.md); the module interaction
-> graph is in [`DEPENDENCY_MAP.md`](./DEPENDENCY_MAP.md).
+> architecture refactor, kept as the audit record. The refactor described in
+> [`TARGET_ARCHITECTURE.md`](./TARGET_ARCHITECTURE.md) has since been
+> **implemented** — see that document for the current structure and the current
+> [`README.md`](../README.md) for the folder map. This file remains the
+> reference for *what existed and why the changes were needed*; the module
+> interaction graph is in [`DEPENDENCY_MAP.md`](./DEPENDENCY_MAP.md).
 
 Wise PMS ("Smart Healthcare Management") is a **desktop-first, local-first,
 offline** Patient Management System for a homeopathy clinic. It is built with:

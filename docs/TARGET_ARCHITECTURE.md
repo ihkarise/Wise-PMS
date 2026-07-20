@@ -5,6 +5,11 @@ Companion to [`ARCHITECTURE.md`](./ARCHITECTURE.md) (as-built) and
 codebase is going** and the **incremental, behavior-preserving** path to get
 there.
 
+> **Status: IMPLEMENTED.** All six migration stages in §6 are complete. The
+> repository now has this structure. Behavior was preserved at every step,
+> verified by `tests/` (regression golden, model/table parity, view-build, and
+> router-contract), which stayed green across all stages.
+
 ## 0. Design principles
 
 1. **Domain-driven, not screen-driven.** Code is organized around *business
@@ -158,14 +163,14 @@ No other module needs to change — that is the point of the structure.
 
 ## 6. Migration sequence (each = one commit, regression stays green)
 
-| Stage | Change | Behavior risk |
-| ----- | ------ | ------------- |
-| 1 | Audit docs (`docs/`) | none (docs only) |
-| 2 | Foundation hygiene: delete junk dirs, add `__init__.py`, `.gitignore`, `.gitkeep`, `tests/` | none |
-| 3 | Extract `config/` (paths, constants) + `core/database.py`; `db.py` → shim | none (re-exports) |
-| 4 | Add `repositories` + `models`; services delegate to repos, identical signatures/returns | none |
-| 5 | Move code into `app/modules/<domain>/` + `shared/`; old paths become shims; `main.py` uses new paths | none (imports resolve; regression green) |
-| 6 | Add `controllers` + `core/router`; `main.py` → `bootstrap.py`; remove shims | none |
+| Stage | Change | Behavior risk | Status |
+| ----- | ------ | ------------- | ------ |
+| 1 | Audit docs (`docs/`) | none (docs only) | ✅ done |
+| 2 | Foundation hygiene: delete junk dirs, add `__init__.py`, `.gitignore`, `.gitkeep`, `tests/` | none | ✅ done |
+| 3 | Extract `config/` (paths, constants) + `core/database.py`; `db.py` → shim | none (re-exports) | ✅ done |
+| 4 | Add `repositories` + `models`; services delegate to repos, identical signatures/returns | none | ✅ done |
+| 5 | Move code into `app/modules/<domain>/` + `shared/`; old paths become shims; `main.py` uses new paths | none (imports resolve; regression green) | ✅ done |
+| 6 | Add `controllers` + `core/router`; `main.py` → `bootstrap.py`; remove shims | none | ✅ done |
 
 **Verification at every stage:** `python -m pytest tests/` (or the standalone
 regression runner) must produce a byte-identical snapshot to the Stage-0
