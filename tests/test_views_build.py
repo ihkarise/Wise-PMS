@@ -67,7 +67,15 @@ def test_all_views_build():
     from app.modules.registration.view import registration_view
     from app.modules.visits.view import visit_view
 
+    from app.modules.consultation import service as cs
+
     uid, pid, cid, vid = _seed()
+
+    # A completed consultation (read-only workspace scenario).
+    draft = cs.open_or_create_draft(pid, cid, uid)
+    cs.save_consultation(draft["id"], {"chief_complaint": "Ache"}, uid)
+    cs.complete_consultation(draft["id"], uid)
+    completed_vid = draft["visit_id"]
 
     def page():
         return _fake_page(uid)
@@ -85,9 +93,10 @@ def test_all_views_build():
         visit_view(page(), pid, None),          # new visit
         visit_view(page(), pid, None, preselected_case=cid),
         visit_view(page(), pid, vid),           # existing visit
-        workspace_view(page(), pid, cid),               # new draft
+        workspace_view(page(), pid, cid),               # new/open draft (editable)
         workspace_view(page(), pid, cid, vid),          # reopened visit
-        workspace_view(page(), pid, cid, section="diagnosis"),  # deep-link
+        workspace_view(page(), pid, cid, section="examination"),  # deep-link editor
+        workspace_view(page(), pid, cid, completed_vid),  # completed -> read-only
         workspace_view(page(), pid, 999999),            # case not-found path
     ]
     for v in scenarios:

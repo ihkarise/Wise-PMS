@@ -1,43 +1,61 @@
-"""Wise PMS — Consultation Workspace (Sprint 1 skeleton).
+"""Wise PMS — Clinical Consultation Workspace (Sprint 3: Narrative Editors + Autosave).
 
-The central screen of WiseOS Health. This sprint delivers the *structure only*:
+The central screen of WiseOS Health. Sprint 1 delivered the structure; Sprint 3
+makes the narrative the living record of care:
 
     ┌ shell header ─────────────────────────────────────────────────┐
-    ├ LEFT RAIL ─┬ CENTER (sections) ────────────┬ RIGHT RAIL ───────┤
+    ├ LEFT RAIL ─┬ CENTER (editors) ─────────────┬ RIGHT RAIL ───────┤
     │ section nav│ Summary · Complaint · History │ Timeline          │
-    │            │ Diagnosis · Prescription ·    │ Investigations    │
-    │            │ Remarks · Follow-up           │ OCR · Protocol·AI │
+    │            │ Examination · Diagnosis ·     │ Investigations    │
+    │            │ Remarks · (Rx/Follow-up soon) │ OCR · Protocol·AI │
     ├ STATUS BAR ┴───────────────────────────────┴───────────────────┤
-    │ Print · Invoice · Dispense · WhatsApp · Complete Visit (disabled)│
+    │ ● dirty · Saving/Saved HH:MM:SS · … · Complete Visit            │
     └────────────────────────────────────────────────────────────────┘
 
-No business logic, no persistence, no feeder-module calls. Patient Summary shows
-read-only patient data (composition over ``patients.service``); every other
-panel is an honest placeholder. Terminal actions are disabled placeholders. All
-controls come from ``shared/theme.py`` + ``shared/widgets.py`` (no raw
-buttons/fields, no hex literals) per arch rule 11.
+Narrative fields (Chief Complaint / History / Examination / Diagnosis / Remarks)
+are editable multiline fields that **autosave** on a debounce through the Sprint 2
+lifecycle service (``controller.autosave`` -> ``save_consultation``). No new
+persistence, no schema change, no status logic here: the view owns only ephemeral
+UI state (dirty flags, save-status label, last-saved timestamp, debounce timer),
+and the service stays the single authority over ``status``.
+
+Prescription and Follow-up remain honest placeholders (still ``visits``-owned,
+deferred). Right-rail context panels and Print/Invoice/Dispense/WhatsApp stay
+placeholders/disabled until their feeder modules land. Controls come from
+``shared/theme.py`` + ``shared/widgets.py`` (no raw widgets, no hex literals).
 """
+
+import threading
+import time
 
 import flet as ft
 
+from app.config.constants import AUTOSAVE_QUIET_MS
+from app.modules.consultation import controller as cc
 from app.modules.consultation.service import workspace_context
 from app.shared import theme as t
 from app.shared.shell import shell
 from app.shared.widgets import disabled_button, info_item, placeholder_card
 
-# Center sections, in clinical order (subset of the full spec — the panels this
-# skeleton exposes). key · label · icon.
+# Center sections, in clinical order. key · label · icon · narrative-field.
+# ``field`` None => not a narrative editor (Summary is read-only; Prescription /
+# Follow-up stay placeholders — still visits-owned, deferred).
 _SECTIONS = [
-    ("summary", "Patient Summary", ft.Icons.PERSON),
-    ("complaint", "Chief Complaint", ft.Icons.RECORD_VOICE_OVER),
-    ("history", "History", ft.Icons.HISTORY),
-    ("diagnosis", "Diagnosis", ft.Icons.MEDICAL_INFORMATION),
-    ("prescription", "Prescription", ft.Icons.MEDICATION),
-    ("remarks", "Remarks", ft.Icons.STICKY_NOTE_2),
-    ("followup", "Follow-up", ft.Icons.EVENT_REPEAT),
+    ("summary", "Patient Summary", ft.Icons.PERSON, None),
+    ("complaint", "Chief Complaint", ft.Icons.RECORD_VOICE_OVER, "chief_complaint"),
+    ("history", "History", ft.Icons.HISTORY, "history"),
+    ("examination", "Examination", ft.Icons.MONITOR_HEART, "examination"),
+    ("diagnosis", "Diagnosis", ft.Icons.MEDICAL_INFORMATION, "diagnosis"),
+    ("remarks", "Remarks", ft.Icons.STICKY_NOTE_2, "remarks"),
+    ("prescription", "Prescription", ft.Icons.MEDICATION, None),
+    ("followup", "Follow-up", ft.Icons.EVENT_REPEAT, None),
 ]
 
-# Right-rail context panels — all placeholders until their feeder modules land.
+# Placeholder note shown for the not-yet-editable narrative-adjacent sections.
+_DEFERRED_NOTE = ("This section stays on the visit record for now and gets its "
+                  "own editor in a later sprint.")
+
+# Right-rail context panels — placeholders until their feeder modules land.
 _CONTEXT_PANELS = [
     ("Timeline", "Visit history will appear here.", ft.Icons.TIMELINE),
     ("Investigations", "Ordered tests and results will appear here.",
@@ -50,14 +68,24 @@ _CONTEXT_PANELS = [
      ft.Icons.SMART_TOY),
 ]
 
-# Bottom action bar — disabled terminal actions (placeholders this sprint).
+# Bottom action bar — terminal actions still disabled placeholders (their feeder
+# modules land later). Complete Visit is wired separately (enabled when editable).
 _ACTIONS = [
     ("Print", ft.Icons.PRINT),
     ("Invoice", ft.Icons.RECEIPT_LONG),
     ("Dispense", ft.Icons.LOCAL_PHARMACY),
     ("WhatsApp", ft.Icons.CHAT),
-    ("Complete Visit", ft.Icons.CHECK_CIRCLE),
 ]
+
+_EDITABLE_STATUSES = ("draft", "in_progress")
+
+_STATUS_TEXT = {
+    "draft": "Draft consultation",
+    "in_progress": "Consultation in progress",
+    "completed": "Consultation completed",
+    "amended": "Consultation amended",
+    "locked": "Consultation locked",
+}
 
 
 def _not_found(page) -> ft.View:
@@ -83,8 +111,105 @@ def workspace_view(page: ft.Page, patient_id: int, case_id: int,
         return _not_found(page)
 
     base = f"/patient/{patient_id}/case/{case_id}/workspace"
-    valid_keys = {key for key, _, _ in _SECTIONS}
+    valid_keys = {key for key, *_ in _SECTIONS}
     active = section if section in valid_keys else "summary"
+
+    user = page.session.get("user") or {}
+    user_id = user.get("id")
+    status = consultation["status"] if consultation else None
+    editable = status in _EDITABLE_STATUSES
+    consultation_id = consultation["id"] if consultation else None
+
+    # ------- Autosave / dirty / save-status state (ephemeral, view-only) -----
+    field_refs: dict = {}   # narrative col -> TextField
+    saved_values = {
+        col: (consultation.get(col) or "" if consultation else "")
+        for _, _, _, col in _SECTIONS if col
+    }
+    timer_holder: dict = {"t": None}
+
+    dirty_dot = ft.Container(width=9, height=9, border_radius=5,
+                             bgcolor=t.ACCENT, visible=False,
+                             tooltip="Unsaved changes")
+    save_status = t.muted("All changes saved" if editable else
+                          _STATUS_TEXT.get(status, "No active consultation"))
+    saved_ts = t.muted("", size=12)
+
+    def _collect():
+        return {col: ref.value for col, ref in field_refs.items()}
+
+    def _is_dirty():
+        return any((v or "") != (saved_values.get(c) or "")
+                   for c, v in _collect().items())
+
+    def _safe_update(*controls):
+        for ctrl in controls:
+            try:
+                ctrl.update()
+            except Exception:
+                pass  # no live runtime (build-time / headless) — nothing to paint
+
+    def _refresh_dirty():
+        dirty = _is_dirty()
+        dirty_dot.visible = dirty
+        if dirty:
+            save_status.value = "Unsaved changes…"
+        _safe_update(dirty_dot, save_status)
+
+    def _do_save():
+        """Persist current editor values via the controller (no-op guarded)."""
+        if consultation_id is None or not editable:
+            return
+        fields = _collect()
+        save_status.value = "Saving…"
+        _safe_update(save_status)
+        try:
+            updated = cc.autosave(consultation_id, fields, user_id)
+            for col in field_refs:
+                saved_values[col] = fields.get(col) or ""
+            dirty_dot.visible = False
+            save_status.value = "Saved"
+            stamp = (updated or {}).get("updated_at")
+            saved_ts.value = f"Last saved {_short_time(stamp)}"
+        except Exception:
+            save_status.value = "Error — changes not saved"
+        _safe_update(dirty_dot, save_status, saved_ts)
+
+    def _schedule_autosave():
+        old = timer_holder.get("t")
+        if old is not None:
+            old.cancel()
+        timer = threading.Timer(AUTOSAVE_QUIET_MS / 1000.0, _do_save)
+        timer.daemon = True
+        timer_holder["t"] = timer
+        timer.start()
+
+    def _flush():
+        """Cancel any pending debounce and force-save now (Ctrl/Cmd+S, nav)."""
+        old = timer_holder.get("t")
+        if old is not None:
+            old.cancel()
+            timer_holder["t"] = None
+        _do_save()
+
+    def _on_field_change(e):
+        _refresh_dirty()
+        _schedule_autosave()
+
+    def _on_keyboard(e):
+        # Ctrl/Cmd+S force-flushes the pending autosave (same save path).
+        if getattr(e, "key", "").lower() == "s" and (
+                getattr(e, "ctrl", False) or getattr(e, "meta", False)):
+            _flush()
+
+    def _navigate(target):
+        # Unsaved-changes safety: flush before leaving so no keystroke is lost.
+        if editable and _is_dirty():
+            _flush()
+        page.go(target)
+
+    if editable:
+        page.on_keyboard_event = _on_keyboard
 
     # ---------- Left rail: section navigation -------------------------
     def nav_item(key, label, icon):
@@ -104,7 +229,7 @@ def workspace_view(page: ft.Page, patient_id: int, case_id: int,
             padding=ft.padding.symmetric(horizontal=14, vertical=11),
             border_radius=t.RADIUS_BUTTON,
             bgcolor=t.PRIMARY if is_active else t.WHITE,
-            on_click=lambda e, k=key: page.go(f"{base}?section={k}"),
+            on_click=lambda e, k=key: _navigate(f"{base}?section={k}"),
             ink=True,
         )
 
@@ -114,7 +239,7 @@ def workspace_view(page: ft.Page, patient_id: int, case_id: int,
                 ft.Text("CONSULTATION", size=11, font_family=t.FONT,
                         weight=ft.FontWeight.W_600, color=t.TEXT_MUTED),
                 ft.Container(height=2),
-                *[nav_item(k, lbl, ic) for k, lbl, ic in _SECTIONS],
+                *[nav_item(k, lbl, ic) for k, lbl, ic, _ in _SECTIONS],
             ],
             spacing=6,
         ),
@@ -151,11 +276,32 @@ def workspace_view(page: ft.Page, patient_id: int, case_id: int,
             spacing=14,
         )
 
-    def section_card(key, label, icon):
+    def editor_body(col, label):
+        value = consultation.get(col) if consultation else ""
+        field = t.text_field(
+            label,
+            value=value,
+            expand=True,
+            multiline=True,
+            min_lines=6,
+            read_only=not editable,
+            hint=(f"Type the {label.lower()}…" if editable else None),
+            on_change=(_on_field_change if editable else None),
+        )
+        field_refs[col] = field
+        note = (t.muted("Autosaves as you type.", size=12) if editable else
+                t.muted("Read-only — this consultation is "
+                        f"{status}.", size=12))
+        return ft.Column([field, note], spacing=8)
+
+    def section_card(key, label, icon, col):
         is_active = key == active
-        body = (summary_body() if key == "summary" else
-                t.muted(f"The {label} editor will be enabled in a later "
-                        f"sprint. Narrative stays the record of care."))
+        if key == "summary":
+            body = summary_body()
+        elif col:
+            body = editor_body(col, label)
+        else:
+            body = t.muted(_DEFERRED_NOTE)
         return ft.Container(
             key=key,
             content=t.card(
@@ -180,7 +326,7 @@ def workspace_view(page: ft.Page, patient_id: int, case_id: int,
         )
 
     center = ft.Column(
-        [section_card(k, lbl, ic) for k, lbl, ic in _SECTIONS],
+        [section_card(k, lbl, ic, col) for k, lbl, ic, col in _SECTIONS],
         spacing=16,
         scroll=ft.ScrollMode.AUTO,
         expand=True,
@@ -200,18 +346,25 @@ def workspace_view(page: ft.Page, patient_id: int, case_id: int,
     )
 
     # ---------- Bottom status / action bar ---------------------------
-    _STATUS_TEXT = {
-        "draft": "Draft consultation",
-        "in_progress": "Consultation in progress",
-        "completed": "Consultation completed",
-        "amended": "Consultation amended",
-        "locked": "Consultation locked",
-    }
-    if consultation:
-        status_label = _STATUS_TEXT.get(consultation["status"],
-                                        "Draft consultation")
+    def _do_complete(e):
+        if consultation_id is None:
+            return
+        try:
+            cc.complete(consultation_id, user_id, _collect())
+            t.snack(page, "Consultation completed.")
+            page.go(f"{base}/visit/{visit_id}")   # reopen read-only
+        except Exception:
+            t.snack(page, "Could not complete the consultation.", error=True)
+
+    if editable:
+        complete_action = t.primary_button(
+            "Complete Visit", on_click=_do_complete,
+            icon=ft.Icons.CHECK_CIRCLE)
     else:
-        status_label = "No active consultation"
+        complete_action = disabled_button("Complete Visit",
+                                          icon=ft.Icons.CHECK_CIRCLE)
+
+    status_label = _STATUS_TEXT.get(status, "No active consultation")
     bottom_bar = ft.Container(
         bgcolor=t.WHITE,
         border_radius=t.RADIUS_CARD,
@@ -221,15 +374,28 @@ def workspace_view(page: ft.Page, patient_id: int, case_id: int,
             [
                 ft.Row(
                     [
-                        ft.Icon(ft.Icons.EDIT_NOTE, size=18, color=t.TEXT_MUTED),
-                        t.muted(f"{status_label} · {patient['name']} · not yet "
-                                f"wired (skeleton)"),
+                        dirty_dot,
+                        ft.Icon(ft.Icons.EDIT_NOTE, size=18,
+                                color=t.TEXT_MUTED),
+                        ft.Column(
+                            [
+                                ft.Row([save_status], spacing=6, tight=True),
+                                ft.Row(
+                                    [t.muted(f"{status_label} · "
+                                             f"{patient['name']}", size=12),
+                                     saved_ts],
+                                    spacing=8, tight=True),
+                            ],
+                            spacing=1,
+                        ),
                     ],
                     spacing=8,
                     tight=True,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
                 ft.Container(expand=True),
                 *[disabled_button(label, icon=icon) for label, icon in _ACTIONS],
+                complete_action,
             ],
             spacing=10,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -252,3 +418,13 @@ def workspace_view(page: ft.Page, patient_id: int, case_id: int,
     )
 
     return shell(page, base, body)
+
+
+def _short_time(stamp) -> str:
+    """Best-effort HH:MM:SS from a DB ``updated_at`` string (falls back to now)."""
+    if isinstance(stamp, str):
+        # SQLite CURRENT_TIMESTAMP => 'YYYY-MM-DD HH:MM:SS'
+        tail = stamp.strip().split(" ")
+        if len(tail) == 2 and len(tail[1]) >= 5:
+            return tail[1]
+    return time.strftime("%H:%M:%S")

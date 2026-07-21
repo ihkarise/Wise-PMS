@@ -102,7 +102,8 @@ def danger_button(text, on_click=None, icon=None):
 
 
 def text_field(label, value="", width=None, expand=False, password=False,
-               keyboard=None, on_change=None, multiline=False, hint=None):
+               keyboard=None, on_change=None, multiline=False, hint=None,
+               read_only=False, min_lines=None, max_lines=None):
     return ft.TextField(
         label=label,
         value=value or "",
@@ -113,7 +114,9 @@ def text_field(label, value="", width=None, expand=False, password=False,
         keyboard_type=keyboard,
         on_change=on_change,
         multiline=multiline,
-        min_lines=3 if multiline else 1,
+        min_lines=min_lines if min_lines is not None else (3 if multiline else 1),
+        max_lines=max_lines,
+        read_only=read_only,
         hint_text=hint,
         bgcolor=WHITE,
         border_radius=RADIUS_INPUT,
