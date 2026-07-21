@@ -17,6 +17,11 @@ CASE_STATUSES = ["Open", "Closed", "Resolved", "On Hold"]
 
 VISIT_OUTCOMES = ["Improving", "Same", "Worse", "Cured", "New Complaint", "Other"]
 
+# Consultation Workspace autosave — trailing-edge debounce quiet period (ms).
+# Narrative edits persist via ``save_consultation`` this long after the last
+# keystroke. UI-only tuning knob; no schema or lifecycle impact.
+AUTOSAVE_QUIET_MS = 900
+
 # Attachment extension -> human-readable file type.
 FILE_TYPES = {
     ".pdf": "PDF", ".jpg": "Image", ".jpeg": "Image", ".png": "Image",

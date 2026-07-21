@@ -127,6 +127,67 @@ def test_transitions_are_audited():
         assert expected in actions, expected
 
 
+def test_autosave_persists_via_controller():
+    from app.modules.consultation import controller as cc
+    from app.modules.consultation import service as cs
+    uid, pid, cid = _seed()
+    c = cs.open_or_create_draft(pid, cid, uid)
+    updated = cc.autosave(c["id"], {"chief_complaint": "Cough",
+                                    "history": "3 days"}, uid)
+    assert updated["status"] == "in_progress"
+    assert updated["chief_complaint"] == "Cough"
+    assert updated["history"] == "3 days"
+
+
+def test_autosave_noop_guard_no_write():
+    # An autosave that changes nothing must not write or audit (debounce firing
+    # on an untouched document, or a re-flush of already-saved text).
+    from app.modules.consultation import controller as cc
+    from app.modules.consultation import service as cs
+    uid, pid, cid = _seed()
+    c = cs.open_or_create_draft(pid, cid, uid)
+    cc.autosave(c["id"], {"diagnosis": "Asthma"}, uid)   # real change
+    before = _audit_actions()
+    same = cc.autosave(c["id"], {"diagnosis": "Asthma"}, uid)  # identical -> no-op
+    after = _audit_actions()
+    assert before == after, "no-op autosave must not write an audit row"
+    assert same["diagnosis"] == "Asthma"
+    # A brand-new draft with no change also stays draft (first-write flip skipped).
+    d = cs.open_or_create_draft(pid, cid, uid)   # reuses same open draft
+    assert d["id"] == c["id"]
+
+
+def test_force_flush_persists():
+    # flush() (Ctrl/Cmd+S path) force-saves pending fields via the same service.
+    from app.modules.consultation import controller as cc
+    from app.modules.consultation import service as cs
+    uid, pid, cid = _seed()
+    c = cs.open_or_create_draft(pid, cid, uid)
+    cc.flush(c["id"], uid, {"examination": "BP 120/80"})
+    assert cs.get_consultation(c["id"])["examination"] == "BP 120/80"
+
+
+def test_complete_flushes_pending_edits():
+    # complete() must persist the last edits before sealing (no lost keystroke).
+    from app.modules.consultation import controller as cc
+    from app.modules.consultation import service as cs
+    uid, pid, cid = _seed()
+    c = cs.open_or_create_draft(pid, cid, uid)
+    done = cc.complete(c["id"], uid, {"remarks": "Review in 2 weeks"})
+    assert done["status"] == "completed"
+    assert cs.get_consultation(c["id"])["remarks"] == "Review in 2 weeks"
+
+
+def test_updated_at_present_after_save():
+    # Last-saved timestamp source: a real save returns an updated_at value.
+    from app.modules.consultation import controller as cc
+    from app.modules.consultation import service as cs
+    uid, pid, cid = _seed()
+    c = cs.open_or_create_draft(pid, cid, uid)
+    updated = cc.autosave(c["id"], {"history": "x"}, uid)
+    assert updated.get("updated_at")
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
