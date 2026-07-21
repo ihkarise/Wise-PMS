@@ -16,7 +16,15 @@
   `app.core.migrations.migrate(conn)`, then seeds `admin`/`admin123` + one
   `settings` row only if absent.
 
-## Tables (8 domain + 1 internal)
+## Tables (9 domain + 1 internal)
+
+> **Sprint 2 (`v0002_consultations`):** `consultations` — the clinical *document*,
+> 1:1 with a `visits` row (the *event*). Columns: `id`, `visit_id`
+> (UNIQUE → `idx_consultation_visit`), `patient_id` (`idx_consultation_patient`),
+> `case_id`, narrative `chief_complaint`/`history`/`examination`/`diagnosis`/
+> `remarks`, `status` (`draft|in_progress|completed|amended|locked`, default
+> `draft`), `created_at`, `updated_at`. FKs → `visits`/`patients`/`patient_cases`.
+> Additive + reversible; `visits` unchanged (ADR-001 / ADR-0009).
 
 The 8 domain tables below plus one internal bookkeeping table, `schema_version`
 (`version` PK · `name` · `applied_at`), which records every applied migration.

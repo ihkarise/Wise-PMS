@@ -4,6 +4,23 @@
 > Add an ADR whenever a phase makes a structural choice.
 > **Last updated:** 2026-07-20. See also [`.ai/DECISION_LOG.md`](../.ai/DECISION_LOG.md).
 
+## ADR-0009 — Consultation as a dedicated aggregate, 1:1 with a visit
+**Status:** Accepted (Sprint 2 / C3). Implements
+[`architecture-decisions/ADR-001-Consultation-Domain.md`](./architecture-decisions/ADR-001-Consultation-Domain.md)
+Option C (Hybrid). The **visit** stays the encounter *event* (`visits`,
+unchanged); a new **`consultations`** table is the clinical *document* — 1:1 with
+a visit (`visit_id` UNIQUE index), narrative-first optional fields
+(`chief_complaint`, `history`, `examination`, `diagnosis`, `remarks`) and a
+`status` lifecycle (`draft → in_progress → completed`, with `amended`/`locked`
+reserved). All `consultations` SQL lives only in `consultation/repository.py`;
+the state machine + audit live in `consultation/service.py`.
+**Why:** widening `visits` would create a god-table conflating event and document
+and hurt AI/reporting/Cloud-Sync. A bounded aggregate keeps contexts independent
+and additive. Migration `v0002_consultations` is additive + reversible; the
+regression golden `TABLES:`/`INDEXES:` lines gain `consultations` +
+`idx_consultation_visit`/`idx_consultation_patient` — an **intentional**,
+documented change (rule 12).
+
 ## ADR-0008 — Ordered, idempotent schema migrations with a version ledger
 **Status:** Accepted (Sprint 0 / F1). Schema DDL is owned by
 `app/core/migrations/`: a `schema_version` ledger table plus a forward-only

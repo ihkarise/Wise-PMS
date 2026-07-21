@@ -139,8 +139,8 @@ def build_snapshot():
 
 
 EXPECTED = """\
-TABLES: attachments,audit_logs,patient_cases,patients,prescription_items,schema_version,settings,sqlite_sequence,users,visits
-INDEXES: idx_attach_patient,idx_case_patient,idx_patient_name,idx_patient_phone,idx_patient_place,idx_patient_regno,idx_visit_case,idx_visit_date,idx_visit_patient
+TABLES: attachments,audit_logs,consultations,patient_cases,patients,prescription_items,schema_version,settings,sqlite_sequence,users,visits
+INDEXES: idx_attach_patient,idx_case_patient,idx_consultation_patient,idx_consultation_visit,idx_patient_name,idx_patient_phone,idx_patient_place,idx_patient_regno,idx_visit_case,idx_visit_date,idx_visit_patient
 ADMIN: [{'username': 'admin', 'full_name': 'Administrator', 'role': 'Admin', 'is_active': 1}]
 SETTINGS_COUNT: 1
 AUTH_ok: admin

@@ -120,13 +120,56 @@ def test_stamps_legacy_database_without_data_loss():
 
     applied = migrate(conn)
 
-    assert applied == [1]  # stamped
+    # v1 baseline already present (stamped, IF NOT EXISTS no-op); later
+    # migrations (v2 consultations) still apply forward.
+    assert applied == [m.version for m in MIGRATIONS]
     assert current_version(conn) == LATEST_VERSION
     # Existing row survived (IF NOT EXISTS made the baseline a no-op).
     row = conn.execute(
         "SELECT username FROM users WHERE username = 'legacy'"
     ).fetchone()
     assert row is not None
+
+
+# --- v0002 consultations ---------------------------------------------------
+
+def test_v0002_creates_consultations_and_indexes():
+    conn = _mem()
+    migrate(conn)
+    assert LATEST_VERSION == 2
+    assert "consultations" in _table_names(conn)
+    idx = [r[0] for r in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='index' "
+        "AND name LIKE 'idx_consultation_%' ORDER BY name")]
+    assert idx == ["idx_consultation_patient", "idx_consultation_visit"]
+
+
+def test_v0002_rollback_drops_consultations_keeps_visits():
+    conn = _mem()
+    migrate(conn)
+    rolled = rollback_to(conn, 1)
+    assert rolled == [2]
+    assert current_version(conn) == 1
+    assert "consultations" not in _table_names(conn)
+    assert "visits" in _table_names(conn)  # v1 event table untouched
+    # Forward again restores it.
+    assert migrate(conn) == [2]
+    assert "consultations" in _table_names(conn)
+
+
+def test_v0002_visit_id_unique_enforced():
+    conn = _mem()
+    migrate(conn)
+    conn.execute("PRAGMA foreign_keys = OFF;")  # isolate the UNIQUE constraint
+    conn.execute("INSERT INTO consultations (visit_id, patient_id, status) "
+                 "VALUES (1, 1, 'draft')")
+    conn.commit()
+    try:
+        conn.execute("INSERT INTO consultations (visit_id, patient_id, status) "
+                     "VALUES (1, 1, 'draft')")
+        assert False, "expected IntegrityError on duplicate visit_id"
+    except sqlite3.IntegrityError:
+        pass
 
 
 # --- rollback --------------------------------------------------------------
@@ -197,7 +240,8 @@ def test_fresh_schema_equals_migrated_schema():
     migrate(migrated)
 
     direct = _mem()
-    direct.executescript(MIGRATIONS[0].up)
+    for m in MIGRATIONS:
+        direct.executescript(m.up)
     ensure_version_table(direct)
 
     # Compare every schema object except the ledger's own contents.

@@ -5,6 +5,7 @@ Parses the workspace route, resolves the optional draft-visit sentinel and the
 — it orchestrates only (arch rule 4).
 """
 
+from app.modules.consultation.service import open_or_create_draft
 from app.modules.consultation.view import workspace_view
 
 
@@ -13,7 +14,14 @@ def workspace_controller(page, params, query=""):
     cid = int(params["cid"])
 
     vid_raw = params.get("vid")
-    visit_id = int(vid_raw) if vid_raw and vid_raw != "new" else None
+    visit_id = int(vid_raw) if vid_raw and vid_raw not in (None, "new") else None
+
+    # Ensure an open draft consultation exists for this case (create-on-open,
+    # reused on reopen). A concrete /visit/<vid> in the route takes precedence.
+    if visit_id is None:
+        user = page.session.get("user") or {}
+        draft = open_or_create_draft(pid, cid, user.get("id"))
+        visit_id = draft["visit_id"]
 
     section = ""
     for part in query.split("&"):

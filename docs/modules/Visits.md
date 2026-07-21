@@ -4,9 +4,11 @@
 **Tables:** `visits`, `prescription_items`
 
 ## Purpose
-A **visit** is one consultation event, optionally linked to a case. It is the
-current home of the consultation workflow and the anchor for the future
-**Consultation Workspace**.
+A **visit** is one consultation **event** (encounter), optionally linked to a
+case. Per ADR-001 / ADR-0009 the visit stays the *event*; the clinical *document*
+now lives in the separate **`consultations`** aggregate (1:1 via `visit_id`), so
+`visits` is **not** widened with narrative consultation fields. See
+[`Consultation.md`](./Consultation.md).
 
 ## Layers
 `models.py` (`Visit`) · `repository.py` (`VisitRepository` — inserts a visit and
