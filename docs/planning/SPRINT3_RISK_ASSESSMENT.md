@@ -1,4 +1,5 @@
-# Sprint 3 — Risk Assessment: Narrative Editors + Autosave
+# Sprint 3 — Risk Assessment: Clinical Consultation Workspace
+## Narrative Editors + Autosave
 
 **Status:** PLAN ONLY. Date: 2026-07-21.
 
@@ -17,6 +18,9 @@ schema change, no new domain, service API already proven in Sprint 2.
 | R8 | **Scope creep into right rail** — "just wire AI/OCR/Protocol while we're here" | Med | Med | Non-goals frozen in Recommendation + Technical Plan. Right rail stays placeholders; Prescription stays visits-owned. Seams documented, not built. |
 | R9 | **Multi-writer edit conflict** (future Cloud Sync) | Low | Low | Out of scope — single-user desktop. `updated_at` reserved; documented in KNOWN_LIMITATIONS as a future optimistic-locking item, not a Sprint 3 gap. |
 | R10 | **Examination section mismatch** — column exists, no nav entry today | Low | Low | Add Examination to `_SECTIONS`; it maps to the existing `examination` column. No schema change. |
+| R11 | **Ctrl/Cmd+S hijacks browser/native Save** — default not prevented | Low | Med | Keyboard handler intercepts + prevents default; maps to force-flush only. No new save mechanism — same `save_consultation` path. |
+| R12 | **Stale "Saved" / wrong timestamp** — label not synced to actual persistence | Low | Med | Save-status + last-saved driven off the service **return value** (`updated_at` from returned dict), not fired optimistically before the call succeeds. "Error" state on exception; edits kept for retry. |
+| R13 | **Unsaved-changes warning false-positive/negative** — dirty flag out of sync | Low | Low | Dirty flags cleared only on successful save; warning is secondary to mandatory flush (R1). Worst case = extra prompt, never silent loss. |
 
 ## Guardrails (carry from Sprint 2)
 

@@ -1,4 +1,5 @@
-# Sprint 3 — Testing Plan: Narrative Editors + Autosave
+# Sprint 3 — Testing Plan: Clinical Consultation Workspace
+## Narrative Editors + Autosave
 
 **Status:** PLAN ONLY. Date: 2026-07-21.
 **Baseline:** 26 tests passing (Sprint 2). Sprint 3 adds cases; **all 26 stay green**.
@@ -17,6 +18,8 @@ timer's milliseconds).
 | `test_autosave_audits_each_real_save` | each field-changing save writes one "Consultation Updated" audit row (actor + entity id) |
 | `test_noop_edit_writes_nothing` | saving the same field values again → **no** new audit row, `updated_at` unchanged (no-op guard) |
 | `test_coalesced_fields_single_update` | one save carrying multiple dirty fields persists all in one call |
+| `test_force_flush_persists` | force-flush (Ctrl/Cmd+S path) → `save_consultation` persists pending fields; same audit path as debounce |
+| `test_updated_at_advances_on_save` | `updated_at` after a real save > before (drives last-saved timestamp); unchanged after a no-op save |
 
 ## 2. Lifecycle boundary — `tests/test_consultation_domain.py`
 
@@ -56,7 +59,11 @@ seed a draft.
    → "Consultation completed"; editors read-only.
 5. Try to edit a completed consultation → fields are read-only (no write path).
 6. Switch sections mid-typing → prior section's edits are saved (flush on nav).
-7. Right rail (Timeline/Investigations/OCR/Protocol/AI) still honest placeholders;
+7. Type → dirty indicator shows; press **Ctrl/Cmd+S** → force-saves immediately,
+   status "Saved HH:MM:SS", dirty indicator clears (browser Save dialog does NOT open).
+8. Edit then attempt route-away while dirty → flush (or unsaved-changes warning);
+   no silent loss.
+9. Right rail (Timeline/Investigations/OCR/Protocol/AI) still honest placeholders;
    Print/Invoice/Dispense/WhatsApp still disabled.
 
 ## Acceptance gate

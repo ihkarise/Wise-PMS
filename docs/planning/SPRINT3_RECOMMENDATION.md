@@ -1,4 +1,5 @@
-# Sprint 3 — Recommendation: Narrative Editors + Autosave (Consultation Workspace, live)
+# Sprint 3 — Clinical Consultation Workspace
+## Narrative Editors + Autosave
 
 **Status:** PLAN ONLY — no code. Await Product Owner approval.
 **Date:** 2026-07-21
@@ -10,9 +11,16 @@ ADR-001 (frozen). Builds on `v0.5.0` workspace skeleton (Sprint 1).
 
 ## TL;DR
 
-**Recommendation: build Narrative Editors + Autosave.** Turn the Consultation
-Workspace from a read-only skeleton into a live, editable clinical document that
-persists through the lifecycle service already shipped in Sprint 2.
+**Recommendation: build the Clinical Consultation Workspace (Narrative Editors +
+Autosave).** Turn the Consultation Workspace from a read-only skeleton into a
+live, editable clinical document that persists through the lifecycle service
+already shipped in Sprint 2.
+
+**Status:** 🟢 APPROVED WITH MINOR CHANGE (Product Owner, 2026-07-21). Milestone
+renamed to **Clinical Consultation Workspace** (subtitle: Narrative Editors +
+Autosave); scope expanded with lightweight UX (dirty indicator, save status,
+last-saved timestamp, unsaved-changes warning, Ctrl/Cmd+S) — all reuse Sprint 2
+services, no new architecture, no schema/ADR change.
 
 Everything needed underneath is already built: the `consultations` table, the
 `draft → in_progress → completed` state machine, `save_consultation` /
@@ -66,8 +74,18 @@ dependency (5 = dependencies already met) · Risk (5 = lowest risk) · User impa
 **In:** editable Complaint / History / Examination* / Diagnosis / Remarks fields
 in the center column; debounced autosave → `save_consultation`; live status
 reflecting `draft → in_progress`; enable **Complete Visit** →
-`complete_consultation`; save-state indicator ("Saving… / Saved HH:MM"); draft
-auto-created on workspace open via `open_or_create_draft`.
+`complete_consultation`; draft auto-created on workspace open via
+`open_or_create_draft`.
+
+**In — lightweight UX (approved expansion, all over Sprint 2 services):**
+- **Dirty-state indicator** — visible marker while unsaved edits pending.
+- **Save status** — "Saving… / Saved / Error".
+- **Last-saved timestamp** — "Saved HH:MM:SS", from `updated_at`.
+- **Unsaved-changes warning** — guard on route-away/close while dirty (flush or prompt).
+- **Keyboard shortcut Ctrl/Cmd+S** — force-flush pending autosave (same `save_consultation` path; not a new save mechanism).
+
+These add **no architecture, no schema, no ADR change** — pure view/controller
+UX over the existing lifecycle service.
 
 > *Examination has a column in `consultations` but no section in the current
 > skeleton nav — Sprint 3 adds the nav entry. No schema change.

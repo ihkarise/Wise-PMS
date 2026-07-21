@@ -1,4 +1,5 @@
-# Sprint 3 — Technical Plan: Narrative Editors + Autosave
+# Sprint 3 — Technical Plan: Clinical Consultation Workspace
+## Narrative Editors + Autosave
 
 **Status:** PLAN ONLY — no code. Await Product Owner approval.
 **Date:** 2026-07-21
@@ -83,6 +84,28 @@ doctor clicks Complete Visit
 - **Idempotent/no-op guard:** skip the save call when no field actually changed
   since the last successful save (avoid audit spam of identical "Updated" rows).
 
+### 4b-bis. Lightweight UX (approved expansion — view/controller only)
+
+All over Sprint 2 services; no new architecture, schema, or ADR.
+
+- **Dirty-state indicator:** view tracks per-field dirty flags (ephemeral UI
+  state). Marker shown while any field differs from last-saved snapshot; cleared
+  on successful `save_consultation`.
+- **Save status:** `idle → Saving… → Saved | Error`. "Saving…" on flush start;
+  "Saved" on service return; "Error" on `ConsultationLifecycleError`/exception
+  (edits kept in the field, retry on next debounce/Ctrl+S).
+- **Last-saved timestamp:** read `updated_at` from the returned consultation dict
+  after each save; render "Saved HH:MM:SS". No new column.
+- **Unsaved-changes warning:** on route-away / workspace close while dirty →
+  **flush first** (primary path); the warning is the safety net if a flush can't
+  complete. No data lost silently.
+- **Ctrl/Cmd+S:** keyboard handler → **force-flush** the pending debounce (calls
+  the same `controller.autosave` → `save_consultation`). Not a separate save
+  mechanism; identical persistence + audit path. No-op guard still applies.
+
+None of these touch `status` or SQL — dirty flags, labels, timestamps are all
+view-side; persistence stays `save_consultation`.
+
 ### 4c. State ownership (unchanged authority)
 
 - **`consultation.service` still owns the state machine.** The view never sets
@@ -103,8 +126,8 @@ future Cloud Sync conflict handling; Sprint 3 does not add optimistic-locking UI
 
 | File | Role in Sprint 3 |
 | ---- | ---------------- |
-| `consultation/view.py` | ✏️ replace placeholder section bodies with **editable `text_field` (multiline)** bound to consultation fields; add Examination section; save-state pill; enable Complete Visit; read-only render when `completed`/`locked` |
-| `consultation/controller.py` | ✏️ `open_workspace`, `autosave(id, fields, user)`, `complete(id, user)`; owns debounce orchestration + flush; **no SQL, no status logic** (delegates to service) |
+| `consultation/view.py` | ✏️ replace placeholder section bodies with **editable `text_field` (multiline)** bound to consultation fields; add Examination section; **dirty-state indicator, save-status label, last-saved timestamp, Ctrl/Cmd+S handler, unsaved-changes guard**; enable Complete Visit; read-only render when `completed`/`locked` |
+| `consultation/controller.py` | ✏️ `open_workspace`, `autosave(id, fields, user)`, `complete(id, user)`, `flush(id, user)` (force-save for Ctrl+S / route-away); owns debounce orchestration + flush; **no SQL, no status logic** (delegates to service) |
 | `consultation/service.py` | 🔒 **no change** — API already complete (`open_or_create_draft`, `save_consultation`, `complete_consultation`). Touch only if a read helper is genuinely missing. |
 | `consultation/repository.py` | 🔒 no change |
 | `consultation/models.py` | 🔒 no change |
@@ -159,6 +182,10 @@ read-only render); accidental schema/golden drift (→ none expected — flag if
 4. No-op edits do not write / do not audit.
 5. Complete Visit flushes pending edits, then `complete_consultation` → `completed`;
    editors become read-only; further edits rejected by the service.
-6. Section-nav / route-away flushes pending edits (no data loss).
-7. Right rail + Print/Invoice/Dispense/WhatsApp remain honest placeholders/disabled.
-8. Docs + `.ai/` memory updated same commit; `MASTER_BACKLOG` C1 advanced.
+6. Section-nav / route-away flushes pending edits (no data loss); unsaved-changes
+   warning fires only when a flush cannot complete.
+7. UX present: dirty indicator while editing, save status (Saving/Saved/Error),
+   last-saved timestamp from `updated_at`, **Ctrl/Cmd+S force-flushes** via the
+   same `save_consultation` path.
+8. Right rail + Print/Invoice/Dispense/WhatsApp remain honest placeholders/disabled.
+9. Docs + `.ai/` memory updated same commit; `MASTER_BACKLOG` C1 advanced.

@@ -1,4 +1,5 @@
-# Sprint 3 — File Map: Narrative Editors + Autosave
+# Sprint 3 — File Map: Clinical Consultation Workspace
+## Narrative Editors + Autosave
 
 Legend: 🆕 new · ✏️ modify · 🔒 must NOT change
 Architecture per ADR-001 (frozen). No migration this sprint.
@@ -7,8 +8,8 @@ Architecture per ADR-001 (frozen). No migration this sprint.
 
 | File | Action | Change |
 | ---- | ------ | ------ |
-| `app/modules/consultation/view.py` | ✏️ | Replace placeholder section bodies with editable multiline fields (Complaint, History, Examination, Diagnosis, Remarks) bound to consultation values; add Examination nav entry; save-state pill ("Saving…/Saved HH:MM"); enable **Complete Visit**; render read-only when status ∈ {completed, amended, locked} |
-| `app/modules/consultation/controller.py` | ✏️ | `open_workspace(pid, cid, user)`; `autosave(id, dirty_fields, user)`; `complete(id, user)`; owns debounce + flush orchestration; delegates ALL persistence/status to service (no SQL, no status logic) |
+| `app/modules/consultation/view.py` | ✏️ | Replace placeholder section bodies with editable multiline fields (Complaint, History, Examination, Diagnosis, Remarks) bound to consultation values; add Examination nav entry; **dirty-state indicator, save-status label (Saving/Saved/Error), last-saved timestamp, Ctrl/Cmd+S handler, unsaved-changes guard**; enable **Complete Visit**; render read-only when status ∈ {completed, amended, locked} |
+| `app/modules/consultation/controller.py` | ✏️ | `open_workspace(pid, cid, user)`; `autosave(id, dirty_fields, user)`; `flush(id, user)` (force-save for Ctrl+S / route-away); `complete(id, user)`; owns debounce + flush orchestration; delegates ALL persistence/status to service (no SQL, no status logic) |
 | `app/config/constants.py` | ✏️ | add `AUTOSAVE_QUIET_MS = 900` |
 | `app/shared/theme.py` or `widgets.py` | ✏️(only if needed) | reuse `text_field` (multiline) — add a helper only if a multiline/read-only variant is genuinely missing; no hex literals, no raw widgets (rule 11) |
 | `app/modules/consultation/service.py` | 🔒 | API already complete (Sprint 2) — no change unless a missing read helper is proven |
@@ -23,7 +24,7 @@ Architecture per ADR-001 (frozen). No migration this sprint.
 
 | File | Action | Change |
 | ---- | ------ | ------ |
-| `tests/test_consultation_domain.py` | ✏️ | autosave round-trip (dirty fields → `save_consultation` → re-read equal); `draft→in_progress` on first write; no-op edit writes/audits nothing; Complete → `completed` → edit rejected |
+| `tests/test_consultation_domain.py` | ✏️ | autosave round-trip (dirty fields → `save_consultation` → re-read equal); `draft→in_progress` on first write; no-op edit writes/audits nothing; **force-flush (Ctrl+S path) persists via same `save_consultation`**; `updated_at` advances on real save (last-saved timestamp source); Complete → `completed` → edit rejected |
 | `tests/test_views_build.py` | ✏️ | workspace builds with an editable draft **and** with a completed (read-only) consultation |
 | `tests/test_regression.py` | 🔒 | golden `TABLES:` line **UNCHANGED** — assert no drift |
 | `tests/test_router.py` | 🔒/✏️ | stay green; touch only if `_setup` needs a draft |
@@ -33,7 +34,7 @@ Architecture per ADR-001 (frozen). No migration this sprint.
 
 | File | Action | Change |
 | ---- | ------ | ------ |
-| `docs/modules/Consultation.md` | ✏️ | status → live editors + autosave; document debounce + flush contract |
+| `docs/modules/Consultation.md` | ✏️ | status → live editors + autosave; document debounce + flush contract + UX (dirty indicator, save status, last-saved, Ctrl/Cmd+S, unsaved-changes warning) |
 | `docs/CLINICAL_WORKFLOW.md` | ✏️ | narrative-authoring loop (open → type → autosave → complete) |
 | `docs/CHANGELOG.md` | ✏️ | Sprint 3 entry; note golden UNCHANGED (no schema change) |
 | `docs/DECISIONS.md` | ✏️ | autosave debounce + flush + no-op-guard decision (references ADR-001 §4e) |
