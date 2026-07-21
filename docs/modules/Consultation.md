@@ -1,8 +1,30 @@
 # Module: Consultation Workspace
 
-**Status:** 🟡 Skeleton (Sprint 1) · **Path:** `app/modules/consultation/` ·
-**Tables:** none (composition-only) ·
-**Spec:** [`../../specs/CONSULTATION_WORKSPACE.md`](../../specs/CONSULTATION_WORKSPACE.md)
+**Status:** 🟢 Domain model (Sprint 2) · **Path:** `app/modules/consultation/` ·
+**Tables:** `consultations` (1:1 with `visits`) ·
+**Spec:** [`../../specs/CONSULTATION_WORKSPACE.md`](../../specs/CONSULTATION_WORKSPACE.md) ·
+**ADR:** [`../architecture-decisions/ADR-001-Consultation-Domain.md`](../architecture-decisions/ADR-001-Consultation-Domain.md)
+
+## Sprint 2 — Consultation domain model (ADR-001 Option C)
+The consultation is the **clinical document**, 1:1 with a **visit** (the event).
+Full vertical slice: `models.py` (`Consultation`) · `repository.py` (only writer
+of `consultations`) · `service.py` (lifecycle state machine + composition) ·
+`controller.py` (create/open draft on workspace open) · `view.py` (status
+read-back). Migration `v0002_consultations` (additive, reversible).
+
+**Lifecycle:** `draft → in_progress → completed` (`amended`/`locked` reserved).
+`consultation.service` is the sole authority validating transitions; every
+transition is audited. `visit_id` UNIQUE enforces one consultation per visit;
+`open_or_create_draft` reuses one open draft per case. Drafts are excluded from
+the completed read model (`for_patient`).
+
+**Service API:** `open_or_create_draft(patient_id, case_id, user_id)` ·
+`save_consultation(id, fields, user_id)` · `complete_consultation(id, user_id)` ·
+`amend_consultation` · `lock_consultation` · `consultation_for_visit(visit_id)` ·
+`workspace_context(patient_id, case_id, visit_id)`.
+
+**Not in Sprint 2:** live editors/autosave UI, Timeline source row (deferred),
+Investigation/OCR/AI (seams only — no provider SDK imported).
 
 ## Purpose
 The **central screen of WiseOS Health**. After a doctor opens (or creates) a

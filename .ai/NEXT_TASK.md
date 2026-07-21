@@ -4,35 +4,21 @@
 > one. **Updated:** 2026-07-20.
 
 ## Now
-**Sprint 1 (Consultation Workspace Skeleton / C1) is complete and committed —
-await Product Owner review.** Do not start the next sprint automatically
-(charter: one sprint, then stop).
+**Sprint 2 (Consultation Domain Model / C3) implemented on
+`claude/sprint-2-implementation` — awaiting Product Owner review before commit.**
 
-Delivered this sprint:
-- [x] `app/modules/consultation/` vertical slice — service (read-only
-      composition), controller + `ROUTES`, workspace skeleton view
-- [x] Layout: top header · left section nav · center sections · right
-      placeholder panels · bottom disabled action bar
-- [x] Shared `disabled_button` + `placeholder_card`; `theme.card(border=…)`
-- [x] Navigation wired (`bootstrap.py` + **Start Consultation** in the case view)
-- [x] Router-contract + view-build tests extended for the new route/view
-- [x] `python3 -m pytest -q` → 16 passing (regression golden byte-identical)
-- [x] Docs updated (module doc, CHANGELOG, spec status, `.ai/`); pushed, no PR
+Delivered:
+- [x] `v0002_consultations` migration (additive, reversible, UNIQUE `visit_id`)
+- [x] `consultation` slice: models + repository + service (lifecycle) + controller + view
+- [x] Lifecycle `draft → in_progress → completed`; audited; 1:1 invariant
+- [x] Tests: `test_consultation_domain.py` + migration/model/regression updates → 26 passing
+- [x] Docs: DATABASE, DECISIONS (ADR-0009), CHANGELOG, module docs, MASTER_BACKLOG, `.ai`
 
 ## Blocked on
-Product Owner approval before starting the next sprint.
+Product Owner review of the Sprint 2 implementation.
 
-## After approval (proposed next sprint)
-Grow the Workspace by landing its **first feeder slice** rather than more
-skeleton. Two low-risk candidates, pick one:
-1. **Real narrative editors + draft autosave** — wire Chief Complaint / History /
-   Diagnosis / Prescription / Remarks / Follow-up to `visits.service`
-   (create/update a draft visit), with autosave; needs the F1 migration runner
-   for any new additive visit columns (chief complaint, examination). Makes the
-   Workspace actually usable end-to-end for one consultation.
-2. **Settings UI (F2)** — small, visible, unblocks Printer/WhatsApp templates the
-   Workspace's Print/WhatsApp actions will eventually need.
-
-Recommendation: **(1)** — it turns the skeleton into a working consultation and
-directly serves the anchor feature; (2) can follow to enable the terminal
-actions. Either way: one sprint, then stop for approval.
+## After approval (deferred Sprint 2 tails / next)
+- Timeline `consultations` source row (M5, optional — deferred).
+- Live narrative editors + autosave UI (separate approved UI sprint).
+- Then feeder phases per ADR-001: Settings (F2) → RBAC + encryption (F3) →
+  Protocol/Investigation/OCR/AI (each behind the AI Gateway).

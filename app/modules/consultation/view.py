@@ -75,9 +75,10 @@ def _not_found(page) -> ft.View:
 
 def workspace_view(page: ft.Page, patient_id: int, case_id: int,
                    visit_id=None, section="") -> ft.View:
-    ctx = workspace_context(patient_id, case_id)
+    ctx = workspace_context(patient_id, case_id, visit_id)
     patient = ctx["patient"]
     case = ctx["case"]
+    consultation = ctx["consultation"]
     if not patient or not case:
         return _not_found(page)
 
@@ -199,8 +200,18 @@ def workspace_view(page: ft.Page, patient_id: int, case_id: int,
     )
 
     # ---------- Bottom status / action bar ---------------------------
-    status_label = ("Draft consultation" if visit_id is None
-                    else f"Visit #{visit_id}")
+    _STATUS_TEXT = {
+        "draft": "Draft consultation",
+        "in_progress": "Consultation in progress",
+        "completed": "Consultation completed",
+        "amended": "Consultation amended",
+        "locked": "Consultation locked",
+    }
+    if consultation:
+        status_label = _STATUS_TEXT.get(consultation["status"],
+                                        "Draft consultation")
+    else:
+        status_label = "No active consultation"
     bottom_bar = ft.Container(
         bgcolor=t.WHITE,
         border_radius=t.RADIUS_CARD,

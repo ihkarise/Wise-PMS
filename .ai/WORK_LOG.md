@@ -2,6 +2,33 @@
 
 > Append an entry per work session. Newest first. **Updated:** 2026-07-20.
 
+## 2026-07-20 — Sprint 2: Consultation Domain Model (C3, ADR-001 Option C)
+**Branch:** `claude/sprint-2-implementation` (based on `origin/main`)
+
+### Implementation (per approved ADR-001 Hybrid + Sprint 2 planning)
+- Migration `app/core/migrations/v0002_consultations.py` — `consultations` table
+  (1:1 with `visits`, UNIQUE `visit_id`), additive `up` + reversible `down`;
+  appended to `registry.MIGRATIONS`. `visits` untouched.
+- `consultation` slice: `models.Consultation`; `repository` (sole `consultations`
+  writer: `create_draft`, `update`, `set_status`, `get`, `get_by_visit`,
+  `open_draft_for_case`, `for_patient`); `service` lifecycle state machine
+  (`draft → in_progress → completed`, `amended`/`locked` reserved; `_ALLOWED`
+  transition table; `ConsultationLifecycleError`; audit each transition;
+  `workspace_context` extended with the active consultation); `controller`
+  create/open-draft on workspace open; `view` bottom-bar status read-back.
+- Tests: `test_consultation_domain.py` (lifecycle, 1:1 invariant, illegal
+  transition, draft isolation, audit); `test_migrations.py` (`v0002` create/
+  rollback/unique, fresh==migrated, legacy stamping); `test_models.py`
+  (`Consultation` parity); `test_regression.py` golden `TABLES:`/`INDEXES:`
+  updated (intentional — ADR-0009). `python3 -m pytest -q` → **26 passing**.
+- Docs: DATABASE, DECISIONS (ADR-0009), CHANGELOG, modules/{Consultation,Visits},
+  MASTER_BACKLOG (C3), `.ai/{CURRENT_PHASE,NEXT_TASK}`.
+- Deferred: Timeline source row (M5, optional); live editors/autosave UI;
+  Investigation/OCR/AI (seams only — grep-verified no provider SDK import).
+- Not committed — awaiting Product Owner review.
+
+---
+
 ## 2026-07-20 — Sprint 1: Consultation Workspace Skeleton (C1)
 **Branch:** `claude/consultation-workspace-skeleton-qi1nfx`
 

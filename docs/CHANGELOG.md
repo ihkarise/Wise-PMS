@@ -6,6 +6,22 @@ All notable changes to WiseOS Health / Wise PMS. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Consultation Domain Model (Sprint 2 / C3, ADR-001 Option C).** New
+  `consultations` table (migration `v0002_consultations`, additive + reversible)
+  — the clinical *document*, 1:1 with a `visits` *event* (`visit_id` UNIQUE).
+  New `consultation` vertical slice: `models.Consultation`, `repository`
+  (sole writer of `consultations`), `service` lifecycle state machine
+  (`draft → in_progress → completed`, `amended`/`locked` reserved; every
+  transition audited), controller create/open-draft on workspace open, and view
+  status read-back. `visits` untouched. New `tests/test_consultation_domain.py`
+  + `v0002` migration/model coverage.
+
+### Changed
+- **Regression golden** `TABLES:`/`INDEXES:` lines gain `consultations`,
+  `idx_consultation_visit`, `idx_consultation_patient` — intentional, documented
+  (ADR-0009). No behaviour change to existing features.
+
+### Added (prior)
 - **Consultation Workspace skeleton (Sprint 1 / backlog C1).** New
   `app/modules/consultation/` vertical slice — the structural foundation of the
   central consultation screen. Composition-only (no table, no SQL, no business

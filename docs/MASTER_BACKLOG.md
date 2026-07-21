@@ -25,7 +25,7 @@ Legend: **P1** must-do foundation · **P2** high-value feature · **P3** later.
 | -- | ---- | -------- | ----- |
 | C1 | Consultation Workspace (integrated single screen) | P2 | Anchor feature |
 | C2 | Protocol Engine (templates per condition) | P2 | Feeds C1 |
-| C3 | Chief complaint / history / examination / diagnosis fields | P2 | Structured + narrative |
+| C3 | Chief complaint / history / examination / diagnosis fields | P2 | Structured + narrative · **Sprint 2: `consultations` aggregate + lifecycle done** |
 | C4 | Investigation ordering + results | P2 | Links OCR |
 | C5 | Prescription pricing inside consultation | P3 | Needs inventory pricing |
 | C6 | Follow-up scheduling surfaced in workspace | P2 | Visit already has followup_date |

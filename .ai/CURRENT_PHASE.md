@@ -1,50 +1,31 @@
 # .ai/CURRENT_PHASE.md
 
-**Phase:** Sprint 1 — Consultation Workspace Skeleton (backlog C1)
-**Status:** Complete → committed; awaiting Product Owner approval before Sprint 2
-**Branch:** `claude/consultation-workspace-skeleton-qi1nfx`
+**Phase:** Sprint 2 — Consultation Domain Model (backlog C3, ADR-001 Option C)
+**Status:** Implemented → awaiting Product Owner review (not committed)
+**Branch:** `claude/sprint-2-implementation` (based on `origin/main`)
 **Updated:** 2026-07-20
 
 ## Goal
-Build the **structural foundation** of the Consultation Workspace — the central
-screen of WiseOS Health. Framework only: layout, navigation, and honest
-placeholders. **No** business logic, OCR, AI, Protocol Engine, WhatsApp,
-Billing, Dispensing, or Investigation processing.
+Give the Consultation Workspace a persistence spine as a **dedicated
+`consultations` aggregate** (clinical document), 1:1 with a `visits` event, with a
+`draft → in_progress → completed` lifecycle. Additive + reversible; `visits`
+untouched. Per approved ADR-001 (Hybrid) and Sprint 2 planning.
 
-## Scope (this sprint)
-- New `app/modules/consultation/` vertical slice — **composition-only** (no
-  table, no `models.py`, no `repository.py`, no SQL):
-  - `service.py` — `workspace_context(pid, cid)`, read-only composition over
-    `patients`/`cases` services.
-  - `controller.py` — `workspace_controller` + `ROUTES`; parses the optional
-    draft-visit sentinel and `?section=` deep-link.
-  - `view.py` — the workspace layout: shell header · left section-nav rail ·
-    center section cards · right placeholder panels · bottom status/action bar.
-- Layout regions: Top header (shared shell) · Left sidebar (section nav) · Main
-  workspace (Patient Summary, Chief Complaint, History, Diagnosis, Prescription,
-  Remarks, Follow-up) · Right panel (Timeline, Investigations, OCR, Protocol
-  Suggestions, AI Assistant — placeholders) · Bottom bar (Print, Invoice,
-  Dispense, WhatsApp, Complete Visit — disabled placeholders).
-- Shared additions: `widgets.disabled_button`, `widgets.placeholder_card`,
-  optional `theme.card(border=…)`.
-- Navigation: `bootstrap.py` registers the routes; `cases/view.py` gains a
-  **Start Consultation** entry point.
-- Tests: router-contract + view-build extended to cover the new route/view.
+## Delivered
+- Migration `v0002_consultations` (additive, reversible; UNIQUE `visit_id`).
+- `consultation` slice: `models.Consultation`, `repository` (sole `consultations`
+  writer), `service` lifecycle state machine + audit + composition,
+  `controller` create/open-draft on open, `view` status read-back.
+- Tests: `test_consultation_domain.py` + `v0002` migration/model/regression
+  updates. `python3 -m pytest -q` → 26 passing.
 
-## Explicitly NOT in scope
-- No persistence/autosave, no visit finalization, no feeder-module calls.
-- No OCR, AI, Protocol Engine, WhatsApp, Billing, Dispensing, Investigation.
-- No new tables and **no migration** — Sprint 0 DB infrastructure untouched.
-
-## Definition of done
-- `python3 -m pytest -q` green (**16 passing**; regression golden byte-identical).
-- Workspace opens, navigation works, panels render, disabled buttons render.
-- Every affected doc updated in the same commit. Committed + pushed; **no PR**.
+## NOT in scope (deferred)
+- Live editors / autosave UI; Timeline `consultations` source row (M5, optional);
+  Investigation/OCR/AI logic (seams only — no provider SDK imported); RBAC;
+  digital-signature / lock enforcement (reserved states only).
 
 ## Verification
 ```bash
 python3 -m pip install -r requirements-dev.txt
-python3 -m pytest -q     # expect 16 passing
+python3 -m pytest -q     # expect 26 passing
 ```
-
-See [`NEXT_TASK.md`](./NEXT_TASK.md) for the proposed next sprint.
