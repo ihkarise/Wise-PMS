@@ -2,6 +2,13 @@
 
 **Updated:** 2026-09-18
 
+> **Planning status:** Sprint 5 planning discovery is complete and the
+> Product Owner authorized **planning only**. The planning package is now
+> drafted on branch `claude/sprint-5-planning`: `ADR-003` (Role-Based
+> Access Control) plus `docs/planning/SPRINT5_{RECOMMENDATION,TECHNICAL_PLAN,
+> FILE_MAP,RISK_ASSESSMENT,TESTING_PLAN,MILESTONE_CHECKLIST}.md`.
+> **Awaiting Product Owner review — implementation is NOT authorized.**
+
 ## Recommendation: Sprint 5 — RBAC (backlog F3)
 
 ### Why this next
