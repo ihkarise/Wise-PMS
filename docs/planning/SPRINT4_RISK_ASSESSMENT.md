@@ -1,0 +1,53 @@
+# Sprint 4 — Risk Assessment: Settings UI + Database/Storage Abstraction Seams
+
+Severity: 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Low
+**Status:** PLAN ONLY — no code. Await Product Owner approval.
+**Date:** 2026-08-07 · **Revision 1:** 2026-09-18 — R7 re-scoped down
+(Settings now clinic-profile-only, not security config); R6 clarified
+against the revised `StorageProvider` interface; new R11–R13 added for
+the readiness-tier, SQLite network-deployment, and configuration-boundary
+concerns raised by the Product Owner.
+
+| ID | Risk | Sev | Likelihood | Impact | Mitigation |
+| -- | ---- | --- | ---------- | ------ | ---------- |
+| **R1** | `DatabaseAdapter` introduction subtly changes connection lifecycle (e.g. commit/close ordering) and corrupts or loses a write under load. | 🔴 Critical | Low | Data loss/corruption in a clinical record store. | `SQLiteAdapter` is a line-for-line move of the existing `get_connection`/`transaction` bodies — no new logic. `test_db_adapter.py` asserts identical behavior (commit-on-success, rollback-on-exception, always-close) against the pre-refactor implementation before/after. Full regression suite must be green before merge. |
+| **R2** | `StorageProvider` migration changes attachment/backup file paths or naming, breaking links stored in `attachments.file_path` for existing clinics. | 🔴 Critical | Low | Existing patient attachments become unreachable after upgrade. | `LocalDiskStorageProvider` reproduces today's exact path conventions (`SPRINT4_TECHNICAL_PLAN.md` §4.2). `test_storage_provider.py` asserts byte-identical paths/URIs for the same inputs pre/post refactor. No migration touches existing `attachments`/`backups` rows or files. |
+| **R3** | Regression golden (`tests/test_regression.py`) drifts for reasons unrelated to the intentional new Settings route, masking a real behavior change. | 🟠 High | Medium | A real regression ships disguised as "expected new route line." | Golden diff reviewed line-by-line before merge; **only** the new `^/settings$` route/view lines may appear. Any `TABLES:`/`INDEXES:` change is treated as a bug (Sprint 4 has zero migrations), not documented as intentional. |
+| **R4** | `BaseRepository` refactor breaks one of the ~30 existing call sites relying on today's exact `_all`/`_one`/`_scalar`/`_execute` return shapes. | 🟠 High | Low | Every module (patients, cases, visits, consultation, attachments, audit, timeline) depends on `BaseRepository` — a shape change is a systemic break. | Signatures and return types are pinned in the Technical Plan §3.2–3.3 and must not change. Full test suite (all modules) is the acceptance gate, not just new tests. |
+| **R5** | Scope creep — Sprint 4 quietly starts building `PostgresAdapter`/`S3StorageProvider`, an ORM, Alembic, or other unneeded surface "while we're in there," violating Article IV §3 (no dead scaffolding) and this review's explicit STOP conditions. | 🟠 High | Medium | Unreviewed engine/dependency surface added without approval; violates the review's "do not change the database engine yet" instruction and Revision 6. | File Map (`SPRINT4_FILE_MAP.md`) explicitly lists only `SQLiteAdapter`/`LocalDiskStorageProvider` as buildable and enumerates the out-of-scope list; code review checklist rejects any second adapter class, ORM/Alembic dependency, or ungated ORM-style migration mechanism in this phase. |
+| **R6** | Settings logo upload (first caller of `StorageProvider`) introduces an unvalidated file-write path (path traversal via a crafted filename), or a call site wrongly assumes every `StorageProvider` exposes a local filesystem path (now that `absolute_path()` is off the Protocol — Revision 4). | 🟠 High | Low | Arbitrary file write outside `attachments/`/`backups/` on the host machine; or a future non-local provider silently breaks a call site that incorrectly typed itself against `LocalDiskStorageProvider`-only capabilities. | Reuse the same filename-sanitization pattern already in `attachments.service.add_attachment` (stem/ext split + generated timestamped name, never the raw user-supplied path); add an explicit test for a malicious filename (`../../etc/passwd`, null bytes). Separately, `local_path()`/`absolute_path()` call sites are grepped and documented as known local-only dependencies (`SPRINT4_TECHNICAL_PLAN.md` §4.2) so they are never silently assumed to exist on the Protocol type. |
+| **R7** (re-scoped, Revision 1) | New `settings` nav entry / route is reachable without RBAC (F3 doesn't exist yet), so any logged-in user (Reception, Pharmacy) can change clinic settings. | 🟢 Low *(was 🟡 Medium — downgraded because the field whitelist now limits exposure to text/logo only)* | High (by design, today) | Any authenticated user can alter clinic profile text/logo — **no longer** security-sensitive configuration, per the Revision 3 field whitelist (`SPRINT4_TECHNICAL_PLAN.md` §2.3). | Same posture as every other route today (Security.md: "any logged-in user can do anything" until F3) — not a new gap. `docs/modules/Settings.md` explicitly notes "RBAC-gated once F3 (Sprint 5) lands." Residual impact is limited to clinic-identity cosmetics, not database/storage/backup/credential/RBAC configuration, which this UI cannot touch (R13). |
+| **R8** | `backup.service.backup_now`'s archive-construction step (still a raw filesystem walk, per Technical Plan §4.4) is mistaken for "already storage-abstracted," and a future sprint builds a non-local `StorageProvider` (e.g. S3) assuming backups fully work through it. | 🟡 Medium | Medium | A future cloud-storage adapter silently fails to back up correctly. | Technical Plan §4.4 (Backup boundary) documents this explicitly as a known partial boundary, with a diagram; `docs/modules/Backups.md` gets an explicit note that archive construction stays local-disk-native by design, only the destination write is abstracted. |
+| **R9** | Two developers/phases both add a `get_adapter()`/`get_storage()` selection mechanism differently (e.g. env var vs. `settings` table) before Product Owner decides which is canonical. | 🟢 Low | Low | Config drift between environments. | Sprint 4 hardcodes the single branch (`sqlite` / `local`) with no external configuration surface yet — env-var/Settings-driven selection is explicitly deferred to whichever sprint adds a second adapter (ADR-002 §11), and even then is a future Administrator surface, never the F2 Settings UI (R13). |
+| **R10** | Settings audit-logging is skipped because it's "just a UI form," breaking Constitution Article VI §2 ("every mutation is audited"). | 🟢 Low | Low | Compliance/traceability gap for clinic-identity changes. | `update_clinic_settings` calls `audit.service.log_action` exactly like every other write service; asserted in `test_settings_domain.py`. |
+| **R11** (new) | ADR-002 or the Sprint 4 planning documents are read as claiming production support for an untested cloud/engine target (Postgres, AWS, Kubernetes, etc.), or as claiming single-machine Clinic Server is equivalent to Local Desktop, leading to a mistaken deployment decision. | 🟠 High | Medium (documentation risk, not code risk) | A clinic or future engineer attempts a deployment the architecture was only ever designed for, not verified against, or runs SQLite on a clinic server believing it is fully supported — outage or data-integrity risk on that attempt. | ADR-002 §0's three-term readiness-tier vocabulary (**Production-supported** / **Conditionally permitted / temporary** / **Architecture-ready**, used precisely per the Sprint 4 Implementation Authorization §10) applied to every target/engine claim across ADR-002 (see §8.0's canonical table) and this document set; no document in this set describes any target beyond Local Desktop as Production-supported, and single-machine Clinic Server is always described as Conditionally permitted / temporary — never elevated to Production-supported and never merely lumped in with "Architecture-ready only" cloud targets. |
+| **R12** (new) | Someone deploys SQLite as a shared database file on a network drive (clinic server, NAS-backed folder) to get quick "multi-user" access, causing silent data corruption under concurrent access. | 🔴 Critical *(if it occurs)* | Low *(pre-empted by explicit documentation)* | Corrupted or lost clinical records; SQLite gives no reliable locking over SMB/NFS. | ADR-002 §8.1 states the rule explicitly and non-negotiably: "SQLite is not a multi-user network database and must not be deployed as a shared database file over a network filesystem." The deployment matrix (§8.2) requires a server-grade engine for any multi-user/networked/cloud target instead of implying SQLite could stretch to cover it. |
+| **R13** (new) | A future edit to the Settings module (this sprint or later) accidentally adds a database/storage/backup-destination/API-key/RBAC field to the F2 UI, re-introducing the exact gap Revision 3 closed. | 🟡 Medium | Low (guarded, but Settings modules tend to accrete fields over time) | Security-sensitive configuration exposed to any authenticated user, undoing the Configuration boundary. | `update_clinic_settings`'s field whitelist (`SPRINT4_TECHNICAL_PLAN.md` §2.3, Part D) is enforced in the **service layer**, not just the view, and `test_settings_domain.py` includes an explicit rejection test for a disallowed key — a future PR that adds a forbidden field fails CI, not just code review. |
+
+## Residual risk
+
+With R1/R2 covered by parity tests against the pre-refactor implementation,
+R3/R4 covered by the existing full-suite gate, R5 covered by an explicit
+scope boundary in the File Map, R7 downgraded to Low by the field
+whitelist, and R11/R12/R13 covered by explicit documentation rules and a
+CI-enforced whitelist test, residual risk is **Low**. No Critical risk
+survives mitigation. This is consistent with the Recommendation's framing
+(`SPRINT4_RECOMMENDATION.md` §2): both workstreams are pure refactors plus
+one small, narrowly-scoped, additive UI module.
+
+## Avoided by design (ADR-002, Revision 1)
+
+- No database engine change → no data-migration risk, no dialect-mismatch
+  risk.
+- No storage backend change → no file-transfer risk, no credential/network
+  risk (local disk only).
+- No AI/OCR/messaging code → no secret-handling risk, no provider-outage
+  risk.
+- No RBAC/encryption bundled in → risk surface stays scoped to two
+  cross-cutting refactors, one explicit configuration boundary, and one
+  narrowly-scoped module, not a compound phase.
+- No claim of cloud/engine production support beyond what is actually
+  built → no misleading-documentation risk (R11).
+- No SQLite-over-network deployment path implied anywhere in this
+  document set → no false sense of "good enough" multi-user support
+  (R12).
