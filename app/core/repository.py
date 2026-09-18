@@ -1,18 +1,20 @@
 """Wise PMS — Base repository (data-access layer).
 
-`BaseRepository` centralizes the SQLite connection lifecycle so concrete
-repositories contain SQL, not `get_connection()/try/finally/close` boilerplate
-(previously repeated ~30 times across the services).
+`BaseRepository` centralizes connection lifecycle so concrete repositories
+contain SQL, not `connect()/try/finally/close` boilerplate (previously
+repeated ~30 times across the services).
 
-It keeps the app's existing "connection per operation" model — appropriate for a
-single-writer desktop workload — and provides the single choke point through
-which all reads and writes flow. That choke point is the seam a future cloud
-sync layer plugs into without touching services or the UI.
+It depends on the `DatabaseAdapter` seam (:mod:`app.core.db_adapters`,
+ADR-002 §3) rather than importing an engine driver directly — that seam is
+what lets a future server-grade engine be added additively, without
+touching any repository's SQL or a single service/controller/view.
+`SQLiteAdapter` is the sole implementation in Sprint 4; behavior here is
+unchanged from the previous direct-`sqlite3`-import version.
 """
 
 from contextlib import contextmanager
 
-from app.core.database import get_connection
+from app.core.db_adapters import get_adapter
 
 
 class BaseRepository:
@@ -21,26 +23,29 @@ class BaseRepository:
     # -- reads ------------------------------------------------------
     def _all(self, sql, params=()):
         """Return every matching row as a list of dicts."""
-        conn = get_connection()
+        adapter = get_adapter()
+        conn = adapter.connect()
         try:
-            return [dict(r) for r in conn.execute(sql, params).fetchall()]
+            return [dict(r) for r in adapter.execute(conn, sql, params).fetchall()]
         finally:
             conn.close()
 
     def _one(self, sql, params=()):
         """Return the first matching row as a dict, or None."""
-        conn = get_connection()
+        adapter = get_adapter()
+        conn = adapter.connect()
         try:
-            row = conn.execute(sql, params).fetchone()
+            row = adapter.execute(conn, sql, params).fetchone()
             return dict(row) if row is not None else None
         finally:
             conn.close()
 
     def _scalar(self, sql, params=()):
         """Return the first column of the first row, or None."""
-        conn = get_connection()
+        adapter = get_adapter()
+        conn = adapter.connect()
         try:
-            row = conn.execute(sql, params).fetchone()
+            row = adapter.execute(conn, sql, params).fetchone()
             return row[0] if row is not None else None
         finally:
             conn.close()
@@ -49,7 +54,7 @@ class BaseRepository:
     def _execute(self, sql, params=()):
         """Run one write statement, commit, and return lastrowid."""
         with self.transaction() as conn:
-            cur = conn.execute(sql, params)
+            cur = get_adapter().execute(conn, sql, params)
             return cur.lastrowid
 
     @contextmanager
@@ -60,12 +65,5 @@ class BaseRepository:
         single logical operation spans multiple statements (e.g. insert a visit
         and its prescription items atomically).
         """
-        conn = get_connection()
-        try:
+        with get_adapter().transaction() as conn:
             yield conn
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()

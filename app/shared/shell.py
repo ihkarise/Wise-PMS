@@ -64,6 +64,8 @@ def shell(page: ft.Page, route: str, body: ft.Control) -> ft.View:
                 workflow_btn("Search Patient", ft.Icons.SEARCH, "/search"),
                 workflow_btn("Dashboard", ft.Icons.DASHBOARD, "/dashboard"),
                 ft.Container(expand=True),
+                ft.IconButton(ft.Icons.SETTINGS, icon_color=t.PRIMARY,
+                              tooltip="Settings", on_click=nav("/settings")),
                 ft.IconButton(ft.Icons.BACKUP, icon_color=t.PRIMARY,
                               tooltip="Backup Now", on_click=do_backup),
                 ft.Container(

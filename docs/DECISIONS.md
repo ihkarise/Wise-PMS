@@ -2,7 +2,36 @@
 
 > Significant, hard-to-reverse decisions and their rationale. Newest first.
 > Add an ADR whenever a phase makes a structural choice.
-> **Last updated:** 2026-07-20. See also [`.ai/DECISION_LOG.md`](../.ai/DECISION_LOG.md).
+> **Last updated:** 2026-09-18. See also [`.ai/DECISION_LOG.md`](../.ai/DECISION_LOG.md).
+
+## ADR-0010 — DatabaseAdapter + StorageProvider seams; clinic-profile-only Settings
+**Status:** Accepted (Sprint 4). Implements
+[`architecture-decisions/ADR-002-Cloud-Ready-Architecture.md`](./architecture-decisions/ADR-002-Cloud-Ready-Architecture.md)
+§3/§5. `BaseRepository` and `core.database.get_connection()` now delegate
+to a `DatabaseAdapter` (`app/core/db_adapters/` — `SQLiteAdapter` is the
+sole implementation) instead of importing `sqlite3` directly.
+`attachments.service` and the backup archive's *destination write* now
+go through a `StorageProvider` (`app/core/storage/` —
+`LocalDiskStorageProvider` is the sole implementation; the universal
+interface is deliberately `save`/`open`/`delete`/`url_for` only, with no
+`absolute_path()`, since a cloud object has no local filesystem path). A
+new clinic-profile-only Settings UI (`app/modules/settings/`) is the
+first caller of the storage seam and enforces a service-layer field
+whitelist (`SETTINGS_FIELDS`) that rejects database/storage/backup-
+destination/API-key/RBAC configuration.
+**Why:** ADR-002 found the database and file-storage layers hardwired to
+SQLite/local-disk with zero abstraction — the two concrete gaps blocking
+"database-independent" and "storage-abstracted" architecture goals. Both
+seams are introduced as pure, behavior-preserving refactors (verified by
+parity tests) so a future server-grade engine or non-local storage
+backend is additive, never a rewrite, without changing the engine or
+backend *now*.
+**Consequence:** No schema change, no engine change, no new dependency.
+Regression golden gains only the new `^/settings$` route/view lines. New
+`tests/test_layering.py` gates enforce the boundaries (no `sqlite3`
+import outside the adapter + migrations; no raw `os`/`shutil` write
+outside the storage seam + the documented backup-archive-construction
+exception; no out-of-scope dependency).
 
 ## ADR-0009 — Consultation as a dedicated aggregate, 1:1 with a visit
 **Status:** Accepted (Sprint 2 / C3). Implements

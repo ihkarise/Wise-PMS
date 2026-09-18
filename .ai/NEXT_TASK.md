@@ -1,24 +1,40 @@
 # .ai/NEXT_TASK.md — The single next actionable task
 
 > Keep this to **one** concrete task. When it's done, replace it with the next
-> one. **Updated:** 2026-07-20.
+> one. **Updated:** 2026-09-18.
 
 ## Now
-**Sprint 2 (Consultation Domain Model / C3) implemented on
-`claude/sprint-2-implementation` — awaiting Product Owner review before commit.**
+**Sprint 4 (Cloud-Ready Architecture Seams + Settings UI, ADR-002)
+implemented on `claude/sprint-4-implementation` — awaiting Product Owner
+review of the implementation PR before merge.**
 
 Delivered:
-- [x] `v0002_consultations` migration (additive, reversible, UNIQUE `visit_id`)
-- [x] `consultation` slice: models + repository + service (lifecycle) + controller + view
-- [x] Lifecycle `draft → in_progress → completed`; audited; 1:1 invariant
-- [x] Tests: `test_consultation_domain.py` + migration/model/regression updates → 26 passing
-- [x] Docs: DATABASE, DECISIONS (ADR-0009), CHANGELOG, module docs, MASTER_BACKLOG, `.ai`
+- [x] `DatabaseAdapter` protocol + `SQLiteAdapter` (sole implementation);
+  `BaseRepository`/`core.database` delegate to it, behavior unchanged.
+- [x] `StorageProvider` protocol (`save`/`open`/`delete`/`url_for` only,
+  no universal `absolute_path()`) + `LocalDiskStorageProvider`.
+- [x] Configuration boundary: single hardcoded adapter/provider branch,
+  no env var, no Settings UI control.
+- [x] Clinic-profile-only Settings UI with a service-layer field
+  whitelist rejecting database/storage/backup/API-key/RBAC config.
+- [x] `attachments`/backup-destination-write migrated onto
+  `StorageProvider`; archive construction stays local (Backup boundary).
+- [x] Tests: `test_db_adapter.py`, `test_storage_provider.py`,
+  `test_settings_domain.py`, `test_layering.py`, plus router/views/models
+  extensions → 56 passing (31 prior + 25 new).
+- [x] Docs: DATABASE, DEPLOYMENT (SQLite network rule), CHANGELOG,
+  DECISIONS (ADR-0010), module docs, MASTER_BACKLOG, KNOWN_LIMITATIONS,
+  TARGET_ARCHITECTURE, `.ai/*`.
 
 ## Blocked on
-Product Owner review of the Sprint 2 implementation.
+Product Owner review of the Sprint 4 implementation PR (against `main`).
 
-## After approval (deferred Sprint 2 tails / next)
-- Timeline `consultations` source row (M5, optional — deferred).
-- Live narrative editors + autosave UI (separate approved UI sprint).
-- Then feeder phases per ADR-001: Settings (F2) → RBAC + encryption (F3) →
-  Protocol/Investigation/OCR/AI (each behind the AI Gateway).
+## After approval (next)
+- **Sprint 5 (recommended): RBAC (F3)** — roles/permissions schema +
+  route/action guards, per `docs/planning/SPRINT4_RECOMMENDATION.md` §2.
+  Sequenced before F7 (encryption) and before any future Administrator/
+  Security settings surface that would host database/storage/backup/
+  API-key configuration (ADR-002 §11).
+- Later: F7 encryption at rest → AI Gateway + `provider_credentials` +
+  Mode A/B (ADR-002 §6) → a server-grade `DatabaseAdapter` / non-local
+  `StorageProvider`, each only when a real deployment needs one.

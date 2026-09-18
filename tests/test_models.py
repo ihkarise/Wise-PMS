@@ -27,6 +27,7 @@ def test_model_columns_match_tables():
     from app.modules.cases.models import Case
     from app.modules.consultation.models import Consultation
     from app.modules.patients.models import Patient
+    from app.modules.settings.models import Settings
     from app.modules.visits.models import PrescriptionItem, Visit
 
     pairs = [
@@ -37,6 +38,7 @@ def test_model_columns_match_tables():
         (PrescriptionItem, "prescription_items"),
         (Attachment, "attachments"),
         (Consultation, "consultations"),
+        (Settings, "settings"),
     ]
     for model, table in pairs:
         assert set(model.field_names()) == _columns(table), (

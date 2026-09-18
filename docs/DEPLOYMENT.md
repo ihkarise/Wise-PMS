@@ -61,8 +61,29 @@ automatically; install Poppins (free, Google Fonts) for the exact look.
 
 ## Deployment posture
 
-- **Single desktop, offline** is the only supported deployment today.
-- Multi-user, cloud, and mobile deployments are **not supported** until RBAC
-  (F3), encryption at rest (F7), and sync (F8) land — see [`ROADMAP.md`](./ROADMAP.md).
+- **Single desktop, offline** is the only fully supported deployment today.
+- **Single-machine clinic server** (one process, one machine) is
+  *conditionally permitted / temporary* — see the rule below. It is a
+  transitional option, not the target architecture.
+- Multi-user, networked, cloud, and mobile deployments are **not yet
+  supported** until RBAC (F3), encryption at rest (F7), sync (F8), and a
+  server-grade database adapter land — see [`ROADMAP.md`](./ROADMAP.md)
+  and [`architecture-decisions/ADR-002-Cloud-Ready-Architecture.md`](./architecture-decisions/ADR-002-Cloud-Ready-Architecture.md)
+  §8.0 for the full deployment-tier table.
 - CI/CD: none configured yet; a SessionStart hook / CI to run `pytest` on push
   is a recommended early addition.
+
+### SQLite network-deployment rule (mandatory, non-negotiable)
+
+> **SQLite is not a multi-user network database and must not be deployed
+> as a shared database file over a network filesystem** (SMB/NFS/a shared
+> network drive). Its file-level locking is not reliable in that
+> configuration and risks silent data corruption. Single-machine clinic-
+> server deployment with SQLite is permitted only where the database
+> remains local to that one machine and is not concurrently accessed
+> through a network filesystem — it is a transitional deployment option,
+> never the target multi-user architecture (ADR-002 §8.0/§8.1).
+
+Any deployment needing more than one concurrently-writing machine/process
+requires a server-grade database (PostgreSQL/MySQL/SQL Server/Cloud SQL)
+via a future `DatabaseAdapter` — none is built yet (ADR-002 §3).

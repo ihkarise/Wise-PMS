@@ -18,15 +18,21 @@ profile's Attachments tab.
 - `absolute_path(attachment) -> str`
 
 ## Behavior
-- Copies the source into `attachments/patient_<reg_no>/` with a timestamped
+- Writes the source into `attachments/patient_<reg_no>/` with a timestamped
   filename (`<stem>_<YYYYMMDD_HHMMSS><ext>`), storing a **relative** `file_path`.
+  As of Sprint 4, the write/delete goes through `app.core.storage.get_storage()`
+  (`StorageProvider`, ADR-002 §5.1) instead of calling `os`/`shutil` directly —
+  the on-disk layout and the stored `file_path` values are unchanged.
+- `absolute_path()` calls `LocalDiskStorageProvider.local_path()` directly — a
+  documented, known local-only dependency (ADR-002 §5.1), since a non-local
+  provider has no equivalent filesystem path.
 - Maps extension → `file_type` via `FILE_TYPES` (`app/config/constants.py`);
   unknown → "Other".
 - Every add/delete writes an audit row.
 - Paths resolve under `BASE_DIR` (`WISE_PMS_HOME`-aware).
 
 ## Dependencies
-`attachments.service → audit.service`, `→ config.paths`, `→ config.constants`.
+`attachments.service → audit.service`, `→ app.core.storage`, `→ config.constants`.
 
 ## Known limitations
 Files are unencrypted on disk (L5); no size/type restriction enforced beyond the

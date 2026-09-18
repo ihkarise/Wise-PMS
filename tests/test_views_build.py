@@ -65,6 +65,7 @@ def test_all_views_build():
     from app.modules.patients.views.profile import edit_view, profile_view
     from app.modules.patients.views.search import search_view
     from app.modules.registration.view import registration_view
+    from app.modules.settings.view import settings_view
     from app.modules.visits.view import visit_view
 
     from app.modules.consultation import service as cs
@@ -98,9 +99,50 @@ def test_all_views_build():
         workspace_view(page(), pid, cid, section="examination"),  # deep-link editor
         workspace_view(page(), pid, cid, completed_vid),  # completed -> read-only
         workspace_view(page(), pid, 999999),            # case not-found path
+        settings_view(page()),
     ]
     for v in scenarios:
         assert isinstance(v, ft.View)
+
+
+def test_settings_view_exposes_only_whitelisted_fields():
+    """Guards Product Owner Revision 3/7: the Settings UI must never grow
+    a database/storage/backup-destination/API-key/RBAC control."""
+    import flet as ft
+
+    from app.modules.settings.view import settings_view
+
+    uid, _pid, _cid, _vid = _seed()
+    view = settings_view(_fake_page(uid))
+
+    def collect_text_field_labels(control):
+        labels = []
+        if isinstance(control, ft.TextField):
+            labels.append((control.label or "").lower())
+        for attr in ("controls", "content"):
+            child = getattr(control, attr, None)
+            if isinstance(child, list):
+                for c in child:
+                    labels.extend(collect_text_field_labels(c))
+            elif child is not None:
+                labels.extend(collect_text_field_labels(child))
+        return labels
+
+    labels = collect_text_field_labels(view)
+    allowed_keywords = ("clinic name", "doctor name", "clinic address",
+                       "phone", "email")
+    for label in labels:
+        assert any(k in label for k in allowed_keywords), (
+            f"unexpected field on the Settings screen: {label!r}"
+        )
+    forbidden_keywords = ("database", "storage", "backup", "api key",
+                         "credential", "role", "permission", "rbac",
+                         "encryption")
+    for label in labels:
+        for banned in forbidden_keywords:
+            assert banned not in label, (
+                f"security-sensitive field leaked onto Settings: {label!r}"
+            )
 
 
 if __name__ == "__main__":

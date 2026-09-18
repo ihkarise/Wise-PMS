@@ -7,7 +7,11 @@
 ## Engine & conventions
 
 - **SQLite**, single file `data/wise_pms.db` (path from `app.config.paths`,
-  relocatable via `WISE_PMS_HOME`).
+  relocatable via `WISE_PMS_HOME`). **Production-supported** for Local Desktop;
+  **Conditionally permitted / temporary** for a single-machine clinic server
+  only where the file is never accessed over a network filesystem — see
+  ADR-002 §8.0/§8.1 for the full deployment-tier table and the non-negotiable
+  SQLite network-deployment rule.
 - One connection per operation via `core/database.get_connection()`:
   `row_factory = sqlite3.Row`, `PRAGMA foreign_keys = ON`.
 - All SQL lives in **repositories** (`app/modules/<domain>/repository.py`) built
@@ -15,6 +19,27 @@
 - **Idempotent bootstrap:** `init_db()` applies pending migrations via
   `app.core.migrations.migrate(conn)`, then seeds `admin`/`admin123` + one
   `settings` row only if absent.
+
+### DatabaseAdapter seam (Sprint 4, ADR-002 §3)
+
+`BaseRepository` and `core.database.get_connection()` no longer talk to
+`sqlite3` directly — they delegate to the active `DatabaseAdapter`
+(`app.core.db_adapters.get_adapter()`). `SQLiteAdapter` is the **sole**
+implementation; it is a behavior-preserving wrapper around the exact
+connection/transaction logic that existed before Sprint 4 (same
+`row_factory`, same `PRAGMA`, same commit/rollback/close semantics —
+verified in `tests/test_db_adapter.py`).
+
+```
+BaseRepository -> DatabaseAdapter (get_adapter()) -> SQLiteAdapter -> sqlite3
+```
+
+No schema change, no engine change, no new dependency. A second adapter
+(Postgres/MySQL/SQL Server) is added only when a real deployment needs
+one — see ADR-002 §11 for sequencing. Only `app/core/db_adapters/
+sqlite_adapter.py` and the pre-existing `app/core/migrations/` package
+(unchanged, out of scope) may import `sqlite3` directly
+(`tests/test_layering.py`).
 
 ## Tables (9 domain + 1 internal)
 
@@ -42,7 +67,10 @@ name) · `consultation_type` · `notes` · `is_active` (**soft delete**) ·
 
 ### settings
 Single-row clinic profile: `clinic_name` · `doctor_name` · `clinic_address` ·
-`phone` · `email` · `logo_path` · `backup_path` · `created_at`. **No UI yet.**
+`phone` · `email` · `logo_path` · `backup_path` · `created_at`. **UI (Sprint 4):**
+`app/modules/settings/` edits `clinic_name`/`doctor_name`/`clinic_address`/
+`phone`/`email`/`logo_path` only — `backup_path` stays read-only through this
+module; see [`modules/Settings.md`](./modules/Settings.md) and ADR-002 §6.6.
 
 ### audit_logs
 `id` PK · `user_id` · `action_type` · `entity_type` · `entity_id` ·
