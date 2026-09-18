@@ -4,8 +4,14 @@ Creates and manages the local SQLite database (``data/wise_pms.db``).
 Offline-first. No internet. No cloud.
 
 Paths come from :mod:`app.config.paths` (relocatable via ``WISE_PMS_HOME``);
-``get_connection`` resolves ``DB_PATH`` dynamically so a relocated data root is
-always honoured.
+connections are resolved dynamically so a relocated data root is always
+honoured.
+
+Connection lifecycle is delegated to the active `DatabaseAdapter`
+(:mod:`app.core.db_adapters` — `SQLiteAdapter` today, ADR-002 §3).
+`get_connection` is kept as a compatibility shim: callers (``init_db``, the
+migration runner, tests) are unaffected by the introduction of the adapter
+seam.
 
 The schema itself is owned by the migration framework
 (:mod:`app.core.migrations`): ``init_db`` brings the database up to the latest
@@ -14,20 +20,16 @@ The seed step stays in Python because the admin password is bcrypt-hashed with a
 random salt and cannot be expressed as a static SQL migration.
 """
 
-import sqlite3
-
 import bcrypt
 
 from app.config import paths
+from app.core.db_adapters import get_adapter
 from app.core.migrations import migrate
 
 
-def get_connection() -> sqlite3.Connection:
-    """Return a SQLite connection with row access by column name."""
-    conn = sqlite3.connect(paths.DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON;")
-    return conn
+def get_connection():
+    """Return a database connection (delegates to the active DatabaseAdapter)."""
+    return get_adapter().connect()
 
 
 def init_db() -> None:

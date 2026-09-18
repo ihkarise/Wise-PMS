@@ -11,8 +11,8 @@ Legend: **P1** must-do foundation · **P2** high-value feature · **P3** later.
 | ID | Item | Priority | Notes |
 | -- | ---- | -------- | ----- |
 | F1 | Schema version table + migration runner in `core/database.py` | P1 | No `ALTER TABLE` path today |
-| F2 | Settings UI over existing `settings` table | P1 | Table exists, unused |
-| F3 | RBAC: roles, permissions, route/action guards | P1 | `users.role` decorative |
+| ~~F2~~ | ~~Settings UI over existing `settings` table~~ | — | ✅ **Closed (Sprint 4)** — clinic-profile fields only (`clinic_name`/`doctor_name`/`clinic_address`/`phone`/`email`/`logo_path`); database/storage/backup-destination/API-key/RBAC config explicitly deferred to a future Administrator surface (ADR-002 §6.6) |
+| F3 | RBAC: roles, permissions, route/action guards | P1 | `users.role` decorative — **recommended next sprint (Sprint 5)**, per `docs/planning/SPRINT4_RECOMMENDATION.md` §2 |
 | F4 | User management screen (create/deactivate users) | P2 | Depends on F3 |
 | F5 | Structured date handling (validation, pickers) | P2 | Dates are hand-typed strings |
 | F6 | Pagination/virtualization for large patient tables | P3 | Rebuild-per-keystroke today |
@@ -64,7 +64,16 @@ Legend: **P1** must-do foundation · **P2** high-value feature · **P3** later.
 | A2 | Holoscan imaging/vision | P3 | |
 | A3 | Voice dictation into narrative fields | P3 | |
 
+## Architecture (Sprint 4, ADR-002)
+
+| ID | Item | Priority | Notes |
+| -- | ---- | -------- | ----- |
+| ~~AR1~~ | ~~`DatabaseAdapter` protocol + `SQLiteAdapter`~~ | — | ✅ **Closed (Sprint 4)** — `app/core/db_adapters/`; behavior-preserving; sole adapter, no engine change |
+| ~~AR2~~ | ~~`StorageProvider` protocol + `LocalDiskStorageProvider`~~ | — | ✅ **Closed (Sprint 4)** — `app/core/storage/`; `save`/`open`/`delete`/`url_for` only, no universal `absolute_path()`; sole provider, no backend change |
+| AR3 | Server-grade `DatabaseAdapter` (Postgres/MySQL/SQL Server) | P3 | Architecture-ready only (ADR-002 §8.0) — build only when a real multi-user/networked deployment is scheduled, after F3/F7 |
+| AR4 | Non-local `StorageProvider` (S3/Azure Blob/GCS/MinIO/NAS) | P3 | Architecture-ready only (ADR-002 §5.1) — build only when a real deployment needs one |
+
 ## Tech debt (from ARCHITECTURE.md §11)
 
 Tracked in [`KNOWN_LIMITATIONS.md`](./KNOWN_LIMITATIONS.md): migrations (F1),
-RBAC (F3), date handling (F5), scale/pagination (F6), settings UI (F2).
+RBAC (F3), date handling (F5), scale/pagination (F6).

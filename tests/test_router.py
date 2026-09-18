@@ -77,6 +77,10 @@ def test_router_contract():
          f"/patient/{pid}/case/{cid}/workspace"),
         (f"/patient/{pid}/case/{cid}/workspace?section=diagnosis", user,
          f"/patient/{pid}/case/{cid}/workspace"),
+        # Settings (Sprint 4): same session-guard/route-matching contract
+        # as every other authenticated route.
+        ("/settings", None, "/login"),           # guard: anonymous -> login
+        ("/settings", user, "/settings"),
         ("/totally/unknown", user, "/dashboard"),  # fallback
     ]
     for route, who, expected in cases:

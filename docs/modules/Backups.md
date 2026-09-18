@@ -20,8 +20,23 @@ shared shell's **Backup** icon.
 - Paths come from `app.config.paths`; honors `WISE_PMS_HOME`.
 - The shell shows a success snackbar with the path, or a failure snackbar.
 
+### Backup boundary (Sprint 4, ADR-002 §5.3)
+```
+Backup Builder (local filesystem walk: db file + attachments/ tree
+                -> zip bytes -- unchanged)
+  -> Backup Artifact (the zip bytes)
+  -> StorageProvider.save()   <- Sprint 4 abstracts exactly this step
+  -> Local Disk (today) / Cloud (later -- not built)
+```
+Archive **construction** stays a local filesystem operation (it depends
+on the local SQLite file and the local attachments tree). Only the
+archive's **destination write** goes through `app.core.storage`. This is
+not a cloud backup system — writing to S3/GCS/Azure is a future,
+separately approved phase, not implemented.
+
 ## Dependencies
-`backup.service → config.paths`. No audit row today (candidate improvement).
+`backup.service → config.paths`, `→ app.core.storage`. No audit row today
+(candidate improvement).
 
 ## Known limitations
 - **Backups are unencrypted** (L5 / [`../SECURITY.md`](../SECURITY.md)) — the zip

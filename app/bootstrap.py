@@ -18,6 +18,7 @@ from app.modules.dashboard.controller import ROUTES as DASHBOARD_ROUTES
 from app.modules.dashboard.controller import dashboard_controller
 from app.modules.patients.controller import ROUTES as PATIENT_ROUTES
 from app.modules.registration.controller import ROUTES as REGISTRATION_ROUTES
+from app.modules.settings.controller import ROUTES as SETTINGS_ROUTES
 from app.modules.visits.controller import ROUTES as VISIT_ROUTES
 from app.shared import theme
 
@@ -31,6 +32,7 @@ ROUTES = (
     + CASE_ROUTES
     + VISIT_ROUTES
     + CONSULTATION_ROUTES
+    + SETTINGS_ROUTES
 )
 
 

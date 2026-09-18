@@ -6,6 +6,29 @@ All notable changes to WiseOS Health / Wise PMS. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Sprint 4 — Cloud-Ready Architecture Seams (ADR-002).** New
+  `app/core/db_adapters/` (`DatabaseAdapter` protocol + `SQLiteAdapter`,
+  the sole implementation) and `app/core/storage/` (`StorageProvider`
+  protocol -- `save`/`open`/`delete`/`url_for` only, deliberately no
+  universal `absolute_path()` -- + `LocalDiskStorageProvider`, the sole
+  implementation). Both are behavior-preserving wrappers around the
+  pre-existing `sqlite3`/`os`/`shutil` code; zero engine change, zero
+  storage-backend change, zero new dependency. New `app/modules/settings/`
+  vertical slice: a clinic-profile-only Settings UI (`clinic_name`,
+  `doctor_name`, `clinic_address`, `phone`, `email`, `logo_path`), with a
+  service-layer field whitelist that rejects any other key (database,
+  storage, backup-destination, API-key, or RBAC configuration are
+  explicitly out of scope for this module -- ADR-002 §6.6). `attachments`
+  and the backup archive's *destination write* (not its construction) now
+  go through the StorageProvider seam. New tests:
+  `test_db_adapter.py`, `test_storage_provider.py`,
+  `test_settings_domain.py`, `test_layering.py` (import/dependency
+  boundary gates), plus Settings coverage in `test_router.py`/
+  `test_views_build.py`/`test_models.py`. No schema change, no migration,
+  no new runtime dependency. `python3 -m pytest -q` -> 56 passing (31
+  prior + 25 new); regression golden byte-identical.
+
+### Added (prior)
 - **Consultation Domain Model (Sprint 2 / C3, ADR-001 Option C).** New
   `consultations` table (migration `v0002_consultations`, additive + reversible)
   — the clinical *document*, 1:1 with a `visits` *event* (`visit_id` UNIQUE).

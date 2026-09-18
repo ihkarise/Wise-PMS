@@ -25,7 +25,7 @@
 
 | # | Limitation | Backlog |
 | - | ---------- | ------- |
-| L7 | **No Settings UI** — the `settings` table exists but is uneditable in-app. | F2 |
+| ~~L7~~ | ~~No Settings UI.~~ **Closed (Sprint 4, F2):** `app/modules/settings/` edits clinic-profile fields (name/doctor/address/phone/email/logo) only — see [`modules/Settings.md`](./modules/Settings.md). Database/storage/backup-destination/API-key/RBAC configuration remains unaddressed until a future Administrator surface (F3+F7 first). | ✅ F2 |
 | L8 | **No user-management screen.** | F4 |
 | L9 | `exports/` and `logs/` folders are **reserved but unused.** | D3 |
 | L10 | None of the future modules exist: Consultation Workspace, Protocol Engine, OCR, WhatsApp, Printer, Inventory/WHIMS, PillFill, Billing, Analytics, Portal, Telemedicine, AI. | see backlog |
@@ -35,7 +35,7 @@
 | # | Limitation | Impact | Backlog |
 | - | ---------- | ------ | ------- |
 | L11 | **Full view rebuild on every action**, no pagination. | Fine for one clinician; slow on large tables (search rebuilds per keystroke over 50k patients). | F6 |
-| L12 | **SQLite single-writer.** | Blocks multi-user/multi-device concurrency; the sync story must account for it. | F8 |
+| L12 | **SQLite single-writer; not a network database.** Formalized (Sprint 4) as a non-negotiable rule: SQLite must never be deployed as a shared file over a network filesystem — see [`DEPLOYMENT.md`](./DEPLOYMENT.md) and ADR-002 §8.0/§8.1. | Blocks multi-user/multi-device concurrency; the sync story must account for it. A `DatabaseAdapter` seam exists (Sprint 4) so a server-grade engine can be added additively when needed — none is built yet. | F8 |
 
 ## Platform
 

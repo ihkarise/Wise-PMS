@@ -1,31 +1,58 @@
 # .ai/CURRENT_PHASE.md
 
-**Phase:** Sprint 2 — Consultation Domain Model (backlog C3, ADR-001 Option C)
-**Status:** Implemented → awaiting Product Owner review (not committed)
-**Branch:** `claude/sprint-2-implementation` (based on `origin/main`)
-**Updated:** 2026-07-20
+**Phase:** Sprint 4 — Cloud-Ready Architecture Seams + Settings UI (ADR-002)
+**Status:** Implemented on `claude/sprint-4-implementation` (based on the
+merged planning PR #10 on `main`) → awaiting Product Owner review of the
+implementation PR (not merged)
+**Branch:** `claude/sprint-4-implementation`
+**Updated:** 2026-09-18
 
 ## Goal
-Give the Consultation Workspace a persistence spine as a **dedicated
-`consultations` aggregate** (clinical document), 1:1 with a `visits` event, with a
-`draft → in_progress → completed` lifecycle. Additive + reversible; `visits`
-untouched. Per approved ADR-001 (Hybrid) and Sprint 2 planning.
+Close the two concrete architecture gaps ADR-002 found (no database
+abstraction, no storage abstraction) with behavior-preserving seams, and
+ship a clinic-profile-only Settings UI over the existing `settings`
+table — all without changing the database engine, storage backend, or
+adding any new dependency, per the approved Sprint 4 scope
+(`docs/planning/SPRINT4_RECOMMENDATION.md` §3).
 
 ## Delivered
-- Migration `v0002_consultations` (additive, reversible; UNIQUE `visit_id`).
-- `consultation` slice: `models.Consultation`, `repository` (sole `consultations`
-  writer), `service` lifecycle state machine + audit + composition,
-  `controller` create/open-draft on open, `view` status read-back.
-- Tests: `test_consultation_domain.py` + `v0002` migration/model/regression
-  updates. `python3 -m pytest -q` → 26 passing.
+- `app/core/db_adapters/` — `DatabaseAdapter` protocol + `SQLiteAdapter`
+  (sole implementation). `BaseRepository`/`core.database.get_connection()`
+  delegate to it; behavior verified identical to the pre-Sprint-4
+  direct-`sqlite3` implementation.
+- `app/core/storage/` — `StorageProvider` protocol
+  (`save`/`open`/`delete`/`url_for` only, **no** universal
+  `absolute_path()`) + `LocalDiskStorageProvider` (sole implementation,
+  with a local-only `local_path()` helper kept off the Protocol).
+- Configuration boundary: adapter/provider selection is a single
+  hardcoded branch each — no env var, no Settings UI control.
+- `app/modules/settings/` — clinic-profile-only Settings UI
+  (`clinic_name`, `doctor_name`, `clinic_address`, `phone`, `email`,
+  `logo_path`); service-layer whitelist rejects any other key;
+  `backup_path` stays read-only.
+- `attachments.service` and the backup archive's *destination write*
+  migrated onto `StorageProvider`; archive construction stays local
+  (Backup boundary, ADR-002 §5.3).
+- Tests: `test_db_adapter.py`, `test_storage_provider.py`,
+  `test_settings_domain.py`, `test_layering.py` (import/dependency
+  boundary gates), plus extensions to `test_router.py`,
+  `test_views_build.py`, `test_models.py`. `python3 -m pytest -q` → 56
+  passing (31 prior + 25 new). Regression golden byte-identical except
+  the intentional new `^/settings$` route/view lines.
+- Docs: `DATABASE.md`, `DEPLOYMENT.md` (SQLite network-deployment rule),
+  `CHANGELOG.md`, `DECISIONS.md` (ADR-0010), `modules/Settings.md` (new),
+  `modules/Attachments.md`, `modules/Backups.md` (Backup boundary),
+  `MASTER_BACKLOG.md` (F2 closed; AR1/AR2 closed), `KNOWN_LIMITATIONS.md`
+  (L7 closed; L12 formalized), `TARGET_ARCHITECTURE.md` (folder map).
 
-## NOT in scope (deferred)
-- Live editors / autosave UI; Timeline `consultations` source row (M5, optional);
-  Investigation/OCR/AI logic (seams only — no provider SDK imported); RBAC;
-  digital-signature / lock enforcement (reserved states only).
+## NOT in scope (deferred, per ADR-002 §11 / SPRINT4_RECOMMENDATION.md)
+RBAC (F3, recommended Sprint 5), encryption at rest (F7), any AI/OCR/
+messaging code, any second database adapter or non-local storage
+provider, any ORM/Alembic, any cloud deployment artifact, any sync code,
+any API-key storage.
 
 ## Verification
 ```bash
 python3 -m pip install -r requirements-dev.txt
-python3 -m pytest -q     # expect 26 passing
+python3 -m pytest -q     # expect 56 passing
 ```

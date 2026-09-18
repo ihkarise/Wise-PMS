@@ -1,6 +1,109 @@
 # .ai/WORK_LOG.md — Chronological work log
 
-> Append an entry per work session. Newest first. **Updated:** 2026-07-20.
+> Append an entry per work session. Newest first. **Updated:** 2026-09-18.
+
+## 2026-09-18 — Sprint 4: Cloud-Ready Architecture Seams + Settings UI (ADR-002)
+**Planning branch:** `claude/wiseos-architecture-review-f6gd11` (merged to
+`main` as PR #10). **Implementation branch:** `claude/sprint-4-implementation`
+(based on the post-merge `main`).
+
+### Phase 0 (re-grounding)
+- Read the full architecture review this sprint's planning was based on:
+  `docs/{ARCHITECTURE,TARGET_ARCHITECTURE,DATABASE,DECISIONS,DEPENDENCY_MAP,
+  ROADMAP,MASTER_BACKLOG,KNOWN_LIMITATIONS,SECURITY,DEPLOYMENT}.md`,
+  `specs/PRODUCT_CONSTITUTION.md`, `.ai/{ARCHITECTURE_RULES,PRODUCT_DIRECTION,
+  CURRENT_PHASE,NEXT_PHASE}.md`, and the current `app/` tree
+  (`core/{database,repository,model}.py`, `config/paths.py`,
+  `modules/{attachments,backup,patients,registration}/*`, `shared/{shell,
+  theme}.py`, `bootstrap.py`) plus every existing test file.
+- Confirmed baseline green: `python3 -m pytest -q` → 31 passing, before
+  any change.
+
+### Planning (two review rounds, Product Owner approved)
+- ADR-002 (Cloud-Ready Architecture) + 6 `SPRINT4_*` planning docs,
+  revised twice per Product Owner feedback: readiness-tier vocabulary
+  (Production-supported / Conditionally permitted-temporary /
+  Architecture-ready), the SQLite network-deployment rule, the Settings
+  security field whitelist, the `StorageProvider` interface correction
+  (no universal `absolute_path()`), the Backup boundary, and the
+  finalized canonical deployment-tier table (ADR-002 §8.0).
+- Committed only the planning docs, pushed, opened PR #10, merged into
+  `main` before any implementation branch was created (per the Product
+  Owner's required Git sequence — no planning/implementation commit
+  mixing).
+
+### Implementation (per the approved 10-item scope)
+- `app/core/db_adapters/`: `DatabaseAdapter` Protocol + `Dialect`
+  (`base.py`); `SQLiteAdapter` (`sqlite_adapter.py`) — a line-for-line
+  move of the pre-existing connection/transaction logic; `get_adapter()`
+  singleton (`__init__.py`), single hardcoded `sqlite` branch.
+- `app/core/repository.py`: `BaseRepository` delegates to `get_adapter()`
+  instead of importing `app.core.database` directly; `_all/_one/_scalar/
+  _execute/transaction()` signatures and return shapes unchanged.
+- `app/core/database.py`: `get_connection()` is now a shim delegating to
+  `SQLiteAdapter`; `sqlite3` import removed from this file.
+- `app/core/storage/`: `StorageProvider` Protocol — `save`/`open`/
+  `delete`/`url_for` only, **no** universal `absolute_path()` (`base.py`);
+  `LocalDiskStorageProvider` (`local_disk_provider.py`) — reproduces the
+  pre-existing path conventions verbatim, plus a `local_path()` helper
+  kept off the Protocol, plus explicit path-traversal rejection
+  (`_resolve()` confines every key under `BASE_DIR`); `get_storage()`
+  singleton, single hardcoded `local` branch.
+- `app/modules/attachments/service.py`: `add_attachment`/
+  `delete_attachment` call `storage.save/delete`; `absolute_path()` calls
+  `LocalDiskStorageProvider.local_path()` directly (documented local-only
+  dependency). Public signatures unchanged.
+- `app/modules/backup/service.py`: rewritten around the Backup boundary —
+  `_build_archive()` (local filesystem walk, unchanged) writes to a temp
+  file; the bytes are read and handed to `storage.save()` for the
+  destination write only; naming/collision convention unchanged.
+- `app/modules/settings/`: new vertical slice — `models.Settings`;
+  `repository.SettingsRepository` + `SETTINGS_FIELDS` whitelist
+  (`clinic_name`, `doctor_name`, `clinic_address`, `phone`, `email`,
+  `logo_path` — mirrors the `PATIENT_FIELDS` convention);
+  `service.update_clinic_settings` rejects any other key
+  (`ValueError`) and audits every update; `service.upload_logo` is the
+  first net-new caller of `StorageProvider`; `controller`/`view`
+  (`^/settings$`, reachable from a new header gear icon).
+- `app/bootstrap.py`, `app/shared/shell.py`: wired `SETTINGS_ROUTES` and
+  the Settings nav icon — the only two files touched outside the new
+  packages/module and the two migrated services.
+
+### Tests
+- New: `test_db_adapter.py` (connection/transaction parity + no-second-
+  engine guard), `test_storage_provider.py` (Protocol-conformance split
+  from `LocalDiskStorageProvider`-specific tests, including path-
+  traversal rejection), `test_settings_domain.py` (CRUD, validation,
+  audit, logo upload, field-whitelist rejection, `backup_path` read-only),
+  `test_layering.py` (AST-based import/dependency boundary gates: no
+  stray `sqlite3` import, no stray `shutil`/raw `os` write, no stray
+  `local_path()` call site, no new runtime dependency, no out-of-scope
+  driver/ORM/cloud-SDK import).
+- Extended: `test_router.py` (`/settings` guard + resolution),
+  `test_views_build.py` (`settings_view` build + a field-whitelist
+  assertion over the rendered controls), `test_models.py` (`Settings`
+  model/table parity).
+- `python3 -m pytest -q` → **56 passing** (31 prior + 25 new). Regression
+  golden (`test_regression.py`) unmodified and green — no `TABLES:`/
+  `INDEXES:` change, confirming the two refactors are truly behavior-
+  preserving.
+
+### Docs (same session)
+- `DATABASE.md` (DatabaseAdapter seam + settings-table UI note),
+  `DEPLOYMENT.md` (SQLite network-deployment rule), `CHANGELOG.md`,
+  `DECISIONS.md` (ADR-0010), `modules/Settings.md` (new),
+  `modules/Attachments.md`, `modules/Backups.md` (Backup boundary),
+  `MASTER_BACKLOG.md` (F2 closed; AR1/AR2 closed), `KNOWN_LIMITATIONS.md`
+  (L7 closed; L12 formalized), `TARGET_ARCHITECTURE.md` (folder map +
+  Settings status), `.ai/{CURRENT_PHASE,NEXT_TASK,NEXT_PHASE}.md` (this
+  entry's companions).
+
+### Result
+- Not committed at the time this entry was written — self-review
+  (Step 10 of the Sprint 4 Implementation Authorization) runs next, then
+  commit + push `claude/sprint-4-implementation` + open the implementation
+  PR against `main`. **No PR merge by this session** — Product Owner
+  reviews first.
 
 ## 2026-07-20 — Sprint 2: Consultation Domain Model (C3, ADR-001 Option C)
 **Branch:** `claude/sprint-2-implementation` (based on `origin/main`)

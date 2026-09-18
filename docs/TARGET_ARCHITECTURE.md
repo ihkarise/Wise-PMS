@@ -66,9 +66,13 @@ Wise-PMS/
     │   └── constants.py          # GENDERS, BLOOD_GROUPS, CONSULTATION_TYPES,
     │                             #   CASE_STATUSES, VISIT_OUTCOMES, FILE_TYPES
     ├── core/
-    │   ├── database.py           # get_connection, init_db, migrations runner
-    │   ├── repository.py         # BaseRepository (connection lifecycle helper)
-    │   └── router.py             # Router: route table + dispatch + guard
+    │   ├── database.py           # get_connection (shim -> DatabaseAdapter), init_db
+    │   ├── repository.py         # BaseRepository (delegates to DatabaseAdapter)
+    │   ├── router.py             # Router: route table + dispatch + guard
+    │   ├── db_adapters/          # DatabaseAdapter protocol + SQLiteAdapter
+    │   │                         #   (Sprint 4, ADR-002 §3 — sole implementation)
+    │   └── storage/              # StorageProvider protocol + LocalDiskStorageProvider
+    │                             #   (Sprint 4, ADR-002 §5.1 — sole implementation)
     ├── shared/
     │   ├── theme.py              # design tokens + component factories
     │   ├── shell.py              # app chrome (header/workflow bar)
@@ -113,7 +117,7 @@ real code, following the template in §5.
 | Dashboard/Analytics (basic) | ✅ built | (aggregates) | stat cards |
 | Audit           | ✅ built | `audit_logs` | cross-cutting |
 | Backup          | ✅ built | (filesystem) | zip of db + attachments |
-| Settings        | 🟡 schema only | `settings` | table exists, no UI |
+| Settings        | ✅ built (clinic-profile scope) | `settings` | Sprint 4 — DB/storage/backup/API-key/RBAC config deferred (ADR-002 §6.6) |
 | Appointments    | 🔜 planned | `appointments` (new) | booking |
 | Waiting Queue   | 🔜 planned | `queue` (new) | live token/queue |
 | Dispensing      | 🔜 planned | `dispense_*` (new) | pharmacy handoff |
