@@ -4,9 +4,13 @@
 > one. **Updated:** 2026-09-18.
 
 ## Now
-**Sprint 4 (Cloud-Ready Architecture Seams + Settings UI, ADR-002)
-implemented on `claude/sprint-4-implementation` — awaiting Product Owner
-review of the implementation PR before merge.**
+**Sprint 4 (Cloud-Ready Architecture Seams + Settings UI, ADR-002) is
+CLOSED.** Planning (PR #10) and implementation (PR #11) are both merged
+into `main`. Post-merge final verification is complete: `main` is
+synchronized with `origin/main`, contains implementation commit
+`0523d3c`, 56/56 tests pass, the regression golden is byte-identical, and
+no scope creep was detected. **The repository is ready for Sprint 5
+planning.**
 
 Delivered:
 - [x] `DatabaseAdapter` protocol + `SQLiteAdapter` (sole implementation);
@@ -27,14 +31,10 @@ Delivered:
   TARGET_ARCHITECTURE, `.ai/*`.
 
 ## Blocked on
-Product Owner review of the Sprint 4 implementation PR (against `main`).
+Nothing. Sprint 4 is closed; no further action is required on it.
 
-## After approval (next)
-- **Sprint 5 (recommended): RBAC (F3)** — roles/permissions schema +
-  route/action guards, per `docs/planning/SPRINT4_RECOMMENDATION.md` §2.
-  Sequenced before F7 (encryption) and before any future Administrator/
-  Security settings surface that would host database/storage/backup/
-  API-key configuration (ADR-002 §11).
-- Later: F7 encryption at rest → AI Gateway + `provider_credentials` +
-  Mode A/B (ADR-002 §6) → a server-grade `DatabaseAdapter` / non-local
-  `StorageProvider`, each only when a real deployment needs one.
+## Next
+Sprint 5 has not yet been scoped or approved. When Sprint 5 planning
+begins, the Product Owner's options to consider are recorded in
+`docs/planning/SPRINT4_RECOMMENDATION.md` §2 and `.ai/NEXT_PHASE.md` —
+this file does not decide Sprint 5's scope.

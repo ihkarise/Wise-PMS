@@ -1,11 +1,14 @@
 # .ai/CURRENT_PHASE.md
 
 **Phase:** Sprint 4 — Cloud-Ready Architecture Seams + Settings UI (ADR-002)
-**Status:** Implemented on `claude/sprint-4-implementation` (based on the
-merged planning PR #10 on `main`) → awaiting Product Owner review of the
-implementation PR (not merged)
-**Branch:** `claude/sprint-4-implementation`
-**Updated:** 2026-09-18
+**Status:** ✅ CLOSED — planning (PR #10) and implementation (PR #11) both
+reviewed and merged into `main`. Post-merge final verification completed:
+`main` HEAD `18ff96d` contains implementation commit `0523d3c`; 56/56 tests
+passing; regression golden byte-identical; deployment-tier documentation
+verified consistent; no scope creep detected. **Repository is ready for
+Sprint 5 planning.**
+**Branch:** merged to `main` (was `claude/sprint-4-implementation`)
+**Updated:** 2026-09-18 (closed)
 
 ## Goal
 Close the two concrete architecture gaps ADR-002 found (no database
