@@ -6,6 +6,26 @@ All notable changes to WiseOS Health / Wise PMS. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Sprint 5 — RBAC foundation (F3 / ADR-003), Milestone 1.** New migration
+  `v0003_rbac` (additive + reversible) adds the `roles`, `permissions`,
+  `role_permissions`, and `user_roles` tables and seeds the approved five
+  roles (Administrator/Doctor/Reception/Pharmacy/Accounts), the 16-permission
+  catalogue, and the default role→permission grants
+  (`docs/planning/SPRINT5_TECHNICAL_PLAN.md` §5.2). A UNIQUE index
+  `idx_user_roles_user` enforces one active role per user at the database
+  level; the legacy `users.role` column is left untouched (non-authoritative).
+  New `app/modules/roles/` vertical slice (models, repository, service) whose
+  service enforces the at-least-one-active-Administrator invariant on role
+  assignment; the existing `admin` account (legacy role `Admin`) is bound to
+  the Administrator role by the migration (existing DBs) and by `init_db`
+  (fresh DB) — credentials are never altered. This is the
+  **database/domain foundation only**: no route guard, no service
+  authorization check, and no RBAC UI ship in this milestone. New
+  `tests/test_rbac_foundation.py`. **Intentional, documented golden change
+  (rule 12/13):** the regression golden's `TABLES:` line gains
+  `permissions`, `role_permissions`, `roles`, `user_roles` and its `INDEXES:`
+  line gains `idx_user_roles_user`; no other golden output changed.
+  `python3 -m pytest -q` → 72 passing (56 prior + 16 new).
 - **Sprint 4 — Cloud-Ready Architecture Seams (ADR-002).** New
   `app/core/db_adapters/` (`DatabaseAdapter` protocol + `SQLiteAdapter`,
   the sole implementation) and `app/core/storage/` (`StorageProvider`

@@ -66,6 +66,17 @@ def init_db() -> None:
                 ("Wise Homeopathy Multispeciality Center", ""),
             )
 
+        # Bind the default admin to the Administrator role (RBAC, F3 / ADR-003).
+        # The v0003 migration maps pre-existing users, but on a fresh database
+        # the admin above is seeded *after* migrations run, so ensure its
+        # Administrator binding here — idempotently (INSERT OR IGNORE + the
+        # user_roles UNIQUE index). Credentials/account data are never altered.
+        conn.execute(
+            "INSERT OR IGNORE INTO user_roles (user_id, role_id) "
+            "SELECT u.id, r.id FROM users u JOIN roles r ON r.name = 'Administrator' "
+            "WHERE u.role IN ('Admin', 'Administrator')"
+        )
+
         conn.commit()
     finally:
         conn.close()

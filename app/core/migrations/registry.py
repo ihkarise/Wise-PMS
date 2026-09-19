@@ -10,10 +10,12 @@ clinic database at launch.
 from app.core.migrations.runner import Migration, MigrationError
 from app.core.migrations.v0001_initial import MIGRATION as _V0001
 from app.core.migrations.v0002_consultations import MIGRATION as _V0002
+from app.core.migrations.v0003_rbac import MIGRATION as _V0003
 
 MIGRATIONS: "tuple[Migration, ...]" = (
     _V0001,
     _V0002,
+    _V0003,
 )
 
 

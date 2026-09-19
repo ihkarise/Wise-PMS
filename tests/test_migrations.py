@@ -136,7 +136,7 @@ def test_stamps_legacy_database_without_data_loss():
 def test_v0002_creates_consultations_and_indexes():
     conn = _mem()
     migrate(conn)
-    assert LATEST_VERSION == 2
+    assert LATEST_VERSION == 3  # v0003 RBAC added in Sprint 5 (F3)
     assert "consultations" in _table_names(conn)
     idx = [r[0] for r in conn.execute(
         "SELECT name FROM sqlite_master WHERE type='index' "
@@ -148,12 +148,13 @@ def test_v0002_rollback_drops_consultations_keeps_visits():
     conn = _mem()
     migrate(conn)
     rolled = rollback_to(conn, 1)
-    assert rolled == [2]
+    # Rolling back below v2 also reverses the later v3 (RBAC), newest-first.
+    assert rolled == [3, 2]
     assert current_version(conn) == 1
     assert "consultations" not in _table_names(conn)
     assert "visits" in _table_names(conn)  # v1 event table untouched
-    # Forward again restores it.
-    assert migrate(conn) == [2]
+    # Forward again restores them in ascending order.
+    assert migrate(conn) == [2, 3]
     assert "consultations" in _table_names(conn)
 
 
