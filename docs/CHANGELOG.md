@@ -6,6 +6,27 @@ All notable changes to WiseOS Health / Wise PMS. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Sprint 5 — RBAC router enforcement (F3 / ADR-003), Milestone 3.** The
+  central router (`app/core/router.py`) now runs a **permission guard** after
+  its existing session guard: each route declares a required permission (via
+  the registry constants in `app/modules/roles/permissions.py`) in its
+  module's `ROUTES` table, and a request is denied fail-closed unless the
+  current user holds it. The check is injected into the router
+  (`has_permission` = `roles.service.user_has_permission`, plus a
+  `denied_handler`) so the core router imports no RBAC service. Denials are
+  audited and land the user on their dashboard with a "no permission"
+  snackbar (every role holds `dashboard.view`). Route→permission map
+  (route-level keys only; action-level keys land in a later milestone):
+  `/dashboard`=dashboard.view, `/register`=registration.create,
+  `/search` & `/patient/<id>`=patients.view, `/patient/<id>/edit`=patients.edit,
+  `/patient/<id>/case…`=cases.view, `/patient/<id>/visit…`=visits.view,
+  `…/workspace`=consultation.view, `/settings`=settings.edit; `/login` is
+  public. This is **router-level enforcement only** — no service/controller/
+  repository authorization checks and no RBAC UI. New
+  `tests/test_router_authorization.py` (guard behavior, per-role matrix,
+  route coverage). No schema change, no golden change (the regression golden
+  snapshots the service layer, not routing), no new dependency.
+  `python3 -m pytest -q` → 101 passing (88 prior + 13 new).
 - **Sprint 5 — RBAC foundation (F3 / ADR-003), Milestone 1.** New migration
   `v0003_rbac` (additive + reversible) adds the `roles`, `permissions`,
   `role_permissions`, and `user_roles` tables and seeds the approved five

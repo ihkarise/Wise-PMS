@@ -12,6 +12,7 @@ from app.modules.consultation.service import (
     save_consultation,
 )
 from app.modules.consultation.view import workspace_view
+from app.modules.roles.permissions import CONSULTATION_VIEW
 
 # Editable narrative fields the workspace autosaves. Kept here so the no-op guard
 # compares only what the editors can change (status/ids are never mass-updated).
@@ -96,5 +97,5 @@ ROUTES = [
     #   · …/workspace/visit/new   (open on a new draft visit)
     #   · …/workspace/visit/<vid> (reopen an existing visit)
     (r"^/patient/(?P<pid>\d+)/case/(?P<cid>\d+)/workspace"
-     r"(?:/visit/(?P<vid>new|\d+))?$", workspace_controller),
+     r"(?:/visit/(?P<vid>new|\d+))?$", workspace_controller, CONSULTATION_VIEW),
 ]

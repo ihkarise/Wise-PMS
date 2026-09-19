@@ -1,5 +1,6 @@
 """Visits — controller (router dispatch target for visit screens)."""
 
+from app.modules.roles.permissions import VISITS_VIEW
 from app.modules.visits.view import visit_view
 
 
@@ -18,5 +19,6 @@ def visit_controller(page, params, query=""):
 
 ROUTES = [
     # /patient/<pid>/visit  ·  /patient/<pid>/visit/new  ·  /patient/<pid>/visit/<vid>
-    (r"^/patient/(?P<pid>\d+)/visit(?:/(?P<vid>new|\d+))?$", visit_controller),
+    (r"^/patient/(?P<pid>\d+)/visit(?:/(?P<vid>new|\d+))?$", visit_controller,
+     VISITS_VIEW),
 ]

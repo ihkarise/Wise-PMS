@@ -2,6 +2,7 @@
 
 from app.modules.patients.views.profile import edit_view, profile_view
 from app.modules.patients.views.search import search_view
+from app.modules.roles.permissions import PATIENTS_EDIT, PATIENTS_VIEW
 
 
 def search_controller(page, params=None, query=""):
@@ -17,7 +18,7 @@ def edit_controller(page, params, query=""):
 
 
 ROUTES = [
-    (r"^/search$", search_controller),
-    (r"^/patient/(?P<pid>\d+)$", profile_controller),
-    (r"^/patient/(?P<pid>\d+)/edit$", edit_controller),
+    (r"^/search$", search_controller, PATIENTS_VIEW),
+    (r"^/patient/(?P<pid>\d+)$", profile_controller, PATIENTS_VIEW),
+    (r"^/patient/(?P<pid>\d+)/edit$", edit_controller, PATIENTS_EDIT),
 ]
