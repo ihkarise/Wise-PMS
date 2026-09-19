@@ -135,35 +135,96 @@ One implementation, consulted by the router guard (§7.1) and by
 action-level checks (§7.2), so there is a single, testable definition of
 "is this allowed."
 
-## 5. Permission catalogue (draft — finalized at implementation)
+## 5. Permission catalogue & default role→permission matrix — FINAL
 
-`module.action` keys, one per guarded capability. **Draft** against
-today's routes/actions; the final list is fixed during implementation
-against the routes present then (`SPRINT5_FILE_MAP.md` lists the route
-inventory):
+**FINAL (Product Owner, 2026-09-19).** This is the concrete Sprint 5
+catalogue, derived **only** from functionality that exists today (verified
+`main` HEAD `eb9fb92`), using the repository's actual module/action
+terminology. No permission is defined for functionality that does not exist
+(no appointments, no medicine/dispensing, no inventory, no audit-viewing
+surface — those modules are not built, so they get no keys until they are).
+Assignments are data-driven, so a later refinement is a seed change, not a
+code change; the mapping below is the seeded default the Product Owner has
+approved.
 
-| Key | Guards | Admin | Doctor | Reception | Pharmacy | Accounts |
-| --- | ------ | :--: | :---: | :-------: | :------: | :------: |
-| `patients.view` | `/search`, `/patient/{id}` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `patients.edit` | `/patient/{id}/edit` | ✅ | ✅ | ✅ | — | — |
-| `registration.create` | `/register` | ✅ | ✅ | ✅ | — | — |
-| `cases.view` | `/patient/{id}/case…` (view) | ✅ | ✅ | ✅ | ✅ | — |
-| `cases.manage` | case create/edit | ✅ | ✅ | — | — | — |
-| `visits.manage` | `/patient/{id}/visit…` | ✅ | ✅ | — | — | — |
-| `consultation.edit` | `…/workspace` | ✅ | ✅ | — | — | — |
-| `settings.edit` | `/settings` | ✅ | — | — | — | — |
-| `backup.run` | backup action | ✅ | — | — | — | — |
-| `audit.view` | audit surfacing (if any) | ✅ | — | — | — | — |
-| `rbac.manage` | RBAC admin surface | ✅ | — | — | — | — |
-| `dashboard.view` | `/dashboard` | ✅ | ✅ | ✅ | ✅ | ✅ |
+### 5.1 Legend
+- **Route** permissions gate opening a screen (router guard, §7.1).
+- **Action** permissions gate a mutating operation (service/controller
+  check, §7.2). A route and an action can share a key (e.g. `settings.edit`
+  gates both the `/settings` screen and the write).
+- Administrator holds the **complete Sprint 5 permission set** (every key
+  below).
 
-> The permission→role mapping above is a **draft baseline** derived from
-> `docs/CLINICAL_WORKFLOW.md` role intents; **[PRODUCT OWNER DECISION]** may
-> refine which role gets which permission. Because assignments are
-> data-driven, refinement is a seed-data change, not a code change.
-> Pharmacy/Accounts permissions are minimal today because their modules
-> (dispensing/billing) are not built — their keys arrive with those
-> modules.
+### 5.2 The matrix
+
+| Permission | Kind | Controls / protects (existing route → service op) | Administrator | Doctor | Reception | Pharmacy | Accounts |
+| ---------- | ---- | ------------------------------------------------- | :-----------: | :----: | :-------: | :------: | :------: |
+| `dashboard.view` | Route | `^/dashboard$` (also the router fallback) → dashboard read | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `patients.view` | Route | `^/search$`, `^/patient/{id}$` → `search_patients`, `get_patient`, profile read (cases/timeline/attachments tabs) | ✓ | ✓ | ✓ | — | — |
+| `registration.create` | Route+Action | `^/register$` → `patients.create_patient` (new patient) | ✓ | ✓ | ✓ | — | — |
+| `patients.edit` | Route+Action | `^/patient/{id}/edit$` → `patients.update_patient` | ✓ | ✓ | ✓ | — | — |
+| `patients.deactivate` | Action | `patients.deactivate_patient` (soft-delete; no UI route today, guards the existing service op) | ✓ | ✓ | — | — | — |
+| `attachments.upload` | Action | profile "Upload File" → `attachments.add_attachment` | ✓ | ✓ | ✓ | — | — |
+| `attachments.delete` | Action | profile file delete → `attachments.delete_attachment` | ✓ | ✓ | — | — | — |
+| `cases.view` | Route | `^/patient/{id}/case…$` (open case record) → `cases.get_case`, `cases_for_patient` | ✓ | ✓ | — | — | — |
+| `cases.manage` | Action | `cases.create_case`, `cases.update_case` | ✓ | ✓ | — | — | — |
+| `visits.view` | Route | `^/patient/{id}/visit…$` (open visit entry) → `visits.get_visit`, `visits_for_patient` | ✓ | ✓ | — | — | — |
+| `visits.manage` | Action | `visits.create_visit`, `visits.update_visit` | ✓ | ✓ | — | — | — |
+| `consultation.view` | Route | `^/patient/{id}/case/{cid}/workspace…$` → `consultation.workspace_context`, `open_or_create_draft` (read) | ✓ | ✓ | — | — | — |
+| `consultation.edit` | Action | `consultation.save_consultation`, `complete_consultation`, `amend_consultation`, `lock_consultation` | ✓ | ✓ | — | — | — |
+| `settings.edit` | Route+Action | `^/settings$` → `settings.update_clinic_settings`, `settings.upload_logo` | ✓ | — | — | — | — |
+| `backup.run` | Action | shell "Backup" button (`app/shared/shell.py`) → `backup.backup_now` | ✓ | — | — | — | — |
+| `rbac.manage` | Route+Action | `^/admin/roles$` (new) → all RBAC administration writes | ✓ | — | — | — | — |
+
+### 5.3 Rationale (why each role gets or is denied each permission)
+
+- **Administrator** — full access: the only role that administers the
+  system and RBAC, edits clinic settings, and runs backups. Holds every
+  key (including all clinical keys) so it is never locked out and can act
+  in any capacity.
+- **Doctor** — runs the consultation (`docs/CLINICAL_WORKFLOW.md`): full
+  clinical access (patients view/edit, registration, cases, visits,
+  consultation, attachments up/delete, patient deactivate). **Denied**
+  `settings.edit`, `backup.run`, `rbac.manage` — these are
+  administrative/config operations, not clinical, so least privilege
+  excludes them.
+- **Reception** — front desk: registers and finds patients and maintains
+  demographics and documents (`dashboard.view`, `patients.view`,
+  `registration.create`, `patients.edit`, `attachments.upload`).
+  **Denied** the clinical *authoring* surfaces (`cases.*`, `visits.*`,
+  `consultation.*`), `attachments.delete` (destructive), `patients.deactivate`,
+  and all admin keys — Reception books/registers, it does not author or
+  delete clinical records.
+- **Pharmacy** — dispenses (`docs/CLINICAL_WORKFLOW.md`), but the
+  **dispensing module does not exist yet** (B2/B4 backlog). It therefore
+  has only `dashboard.view` today; its functional keys (e.g.
+  `dispensing.*`) arrive **with** that module (`docs/modules/Roles.md`:
+  "future modules add their own permission keys"). Granting it patient or
+  clinical access now would exceed least privilege with no current
+  function to justify it.
+- **Accounts** — invoices (`docs/CLINICAL_WORKFLOW.md`), but the
+  **billing module does not exist yet** (B1 backlog). Same treatment as
+  Pharmacy: `dashboard.view` only today; `billing.*` keys arrive with the
+  billing module.
+
+> Pharmacy/Accounts intentionally have only `dashboard.view` in Sprint 5.
+> This is the honest least-privilege state: their modules are unbuilt, so
+> there is nothing yet for them to be permitted. This is **not** a gap to
+> fill by inventing permissions — it is corrected when B1/B2/B4 land, each
+> adding its own keys and its own row-appropriate grants.
+
+### 5.4 Notes
+- `registration.create` (new patient) and `patients.edit` (update existing)
+  are kept distinct because they map to distinct routes/operations; both
+  are granted to the same three roles today but may diverge later.
+- `patients.deactivate` guards an **existing** service function
+  (`deactivate_patient`, a soft-delete) that is not currently wired to a
+  route/UI; the key protects the operation wherever it is invoked, so a
+  future UI cannot expose it un-guarded.
+- The profile screen's read-only Cases/Timeline/Attachments tabs are served
+  under `patients.view`; the dedicated `cases.view`/`visits.view`/
+  `consultation.view` keys gate the standalone case/visit/workspace
+  **editor** routes, which are clinical-authoring surfaces.
 
 ## 6. Migration of the existing admin (ADR-003 §6) — safe, no lockout
 
@@ -174,12 +235,11 @@ inventory):
    legacy `role` string:
    - `"Admin"` / `"Administrator"` → Administrator role.
    - Other recognized strings → the matching seeded role.
-   - **[UNRESOLVED — decide at implementation]** unrecognized/null legacy
-     role → a documented **non-locking** default. Recommended: assign the
-     **least-privileged** usable role (or a `no-permissions` state that can
-     still reach `/login`/`/dashboard`), **never** silent Administrator,
-     and surface it for an Administrator to correct. The default must not
-     be able to lock the clinic out and must not silently escalate.
+   - **Unrecognized / null legacy role → the FINAL non-locking,
+     zero-permission state (§8 case 4):** no `user_roles` binding; the user
+     can authenticate but lands on the denial view until an Administrator
+     assigns a role. **Never** silently Administrator, never silently any
+     populated role. The clinic is never locked out (invariant, step 3).
 3. The at-least-one-active-Administrator invariant guarantees the `admin`
    account remains a full Administrator after migration.
 
@@ -222,17 +282,20 @@ No row-scoping requirement in Sprint 5 (ADR-003 §7). The repository seam
 (`SECURITY.md` rule 4) is preserved and documented as the future home; no
 row-filtering code is added. Adding it now would be an unnecessary layer.
 
-## 8. Denial / failure behavior (ADR-003 §8) — fail-closed
-- Route-level: a dedicated **"You don't have permission"** view (and/or the
-  existing `snack(page, …, error=True)`), never the guarded handler, never
-  a traceback — mirroring the session guard's divert-to-`/login` and the
-  dispatch error snackbar already in `router.py`.
-- Action-level: `AuthorizationError` → same friendly denial; no mutation.
-- Every denial audited (`audit_logs`) per `SECURITY.md` rule 2.
-- **[UNRESOLVED — UX]** whether a denied route shows a standalone denial
-  view or redirects to `/dashboard` with a snackbar. Recommended:
-  standalone denial view for a guarded deep-link, snackbar for an in-screen
-  action. Decide at implementation; behavior is fail-closed either way.
+## 8. Denial / failure behavior (ADR-003 §8) — FINAL, fail-closed
+
+**FINAL (Product Owner, 2026-09-19).** All four cases are fail-closed:
+
+| Case | Behavior |
+| ---- | -------- |
+| **Authenticated user lacking the required permission** | Route: render a dedicated **"You don't have permission"** denial view (never the guarded handler, never a traceback). Action: the service raises `AuthorizationError`; the controller shows the friendly denial via the existing `snack(page, …, error=True)`; **no mutation** occurs. The attempt is **audited** (`audit_logs`, `SECURITY.md` rule 2). |
+| **Unauthenticated user** | The existing **session guard** (`app/core/router.py`: `route != "/login" and not authenticated → login`) runs **first**, unchanged, and diverts to `/login`. The permission guard only runs after authentication succeeds. |
+| **Nonexistent / unknown permission key** (a route/action requires a key not in the catalogue) | **Denied for everyone, including Administrator** — the key is not in any resolved permission set, so the fail-closed guard denies it. This surfaces the misconfiguration loudly rather than silently allowing access, and the route-coverage / catalogue test (`SPRINT5_TESTING_PLAN.md`) prevents such a route from shipping. |
+| **Unknown / unrecognized legacy `users.role`** (at migration) | Mapped to a documented **non-locking, zero-permission** state (no `user_roles` binding), **never** silently Administrator and never silently any populated role. The user can still authenticate but lands on the denial view ("no access — contact your administrator") until an Administrator assigns a role. The clinic is never locked out because the at-least-one-active-Administrator invariant (§6) guarantees Administrator access. |
+
+**UX (resolved):** a **standalone denial view** for a guarded deep-linked
+route; a **snackbar** for an in-screen denied action. Both are fail-closed
+and audited.
 
 ## 9. Regression golden strategy (rule 12/13)
 - The four new tables (and their indexes) change the golden's `TABLES:` and
@@ -278,14 +341,25 @@ migration cases, `test_layering.py` extension, and the intentional golden
 update. The **route-coverage** test is the anti-bypass keystone: it asserts
 every route in the assembled registry has an explicit authorization intent.
 
-## 14. Open items requiring a decision
-- **[PRODUCT OWNER DECISION]** runtime custom-role creation (ADR-003 §2) —
-  baseline is predefined roles + configurable permissions.
-- **[PRODUCT OWNER DECISION]** user↔role cardinality (single vs. multi) —
-  recommended single active role this phase.
-- **[PRODUCT OWNER DECISION]** the exact permission→role default mapping
-  (§5) — data-driven, so a seed change.
-- **[UNRESOLVED — implementation]** seed location (migration vs. Python),
-  route→permission mechanism, permission-set caching, unrecognized-legacy-
-  role default, denial UX — all listed inline above; none affects scope or
-  the schema shape.
+## 14. Decision status
+
+**Product Owner decisions — FINAL (2026-09-19), no longer open:**
+- **Role set:** exactly five predefined roles (Administrator, Doctor,
+  Reception, Pharmacy, Accounts); no additional roles this phase.
+- **Runtime custom-role creation:** **OUT OF SCOPE** — no custom-role
+  creation UI or workflow; the data model stays compatible with future
+  configurable roles, but none is built.
+- **User↔role cardinality:** **one user → one active role**; multi-role
+  users out of scope (no role aggregation / permission union).
+- **Permission→role matrix:** **FINAL** per §5.2 (data-driven seed).
+- **Denial model:** **FINAL** per §8 (four fail-closed cases).
+- **F4 user management:** out of scope beyond the minimum RBAC admin (§11).
+- **F7 encryption / row-level authorization:** out of scope (ADR-003
+  §7/§11).
+
+**Implementation-level details (not Product Owner decisions; resolved at
+implementation, no scope/schema impact):** seed location (migration vs.
+`init_db()` Python — §2.4), the exact route→permission registration
+mechanism (§7.1), permission-set caching (§4.2), and `AuthorizationError`
+placement (§4.2 / `SPRINT5_FILE_MAP.md`). Each is marked inline; none
+changes the schema shape or the matrix.

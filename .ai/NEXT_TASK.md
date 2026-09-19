@@ -34,13 +34,15 @@ Delivered:
 Nothing. Sprint 4 is closed; no further action is required on it.
 
 ## Next
-**Sprint 5 planning (F3 RBAC) is drafted and awaiting Product Owner
-review.** The Product Owner authorized *planning only*; the planning
-package lives on branch `claude/sprint-5-planning`: `ADR-003` (Role-Based
-Access Control) plus the six `docs/planning/SPRINT5_*.md` documents. The
-single next task is the **Product Owner's review/approval** of ADR-003 and
-that package, and resolution of the open decisions it flags (runtime custom
-roles; user↔role cardinality; the permission→role default mapping).
-**Implementation is NOT authorized** and must not begin until the Product
-Owner approves and the planning PR merges. This file does not decide
-Sprint 5's scope.
+**Sprint 5 planning (F3 RBAC) is finalized and awaiting Product Owner
+approval.** The theme is approved and the Product Owner's scope decisions
+are **FINAL (2026-09-19)**: five-role set fixed; custom roles out; one
+active role per user (no multi-role); F4 (beyond minimum RBAC admin), F7,
+and row-level authorization out. The permission catalogue + default
+role→permission matrix are finalized (`SPRINT5_TECHNICAL_PLAN.md` §5.2) and
+the four-case denial model is finalized (§8). The package lives on branch
+`claude/sprint-5-planning` (PR #12): `ADR-003` plus the six
+`docs/planning/SPRINT5_*.md` documents. The single next task is the
+**Product Owner's approval** of the revised package. **Implementation is
+NOT authorized** and must not begin until the Product Owner approves and the
+planning PR merges.

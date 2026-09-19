@@ -19,10 +19,13 @@ reviewable, runnable commits."
 - [x] `SPRINT5_RECOMMENDATION.md`, `SPRINT5_TECHNICAL_PLAN.md`,
       `SPRINT5_FILE_MAP.md`, `SPRINT5_RISK_ASSESSMENT.md`,
       `SPRINT5_TESTING_PLAN.md`, this checklist drafted.
-- [ ] **Product Owner approves** ADR-003 + the planning package, and
-      resolves the open decisions (custom roles; user↔role cardinality;
-      permission→role default mapping).
-- [ ] Planning PR merged. *(Gate: implementation does not begin until here.)*
+- [x] **Product Owner scope decisions FINAL (2026-09-19):** five-role set
+      fixed; custom roles out; one active role per user (no multi-role);
+      F4 beyond minimum RBAC admin out; F7 out; row-level out. Permission
+      catalogue + default matrix finalized (`SPRINT5_TECHNICAL_PLAN.md`
+      §5.2); denial model finalized (§8).
+- [ ] **Product Owner approves** the revised ADR-003 + planning package.
+- [ ] Planning PR (#12) merged. *(Gate: implementation does not begin until here.)*
 
 ## M1 — Migration + domain foundation
 - [ ] `v0003_rbac` migration: `roles`/`permissions`/`role_permissions`/

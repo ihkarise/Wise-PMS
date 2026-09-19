@@ -1,11 +1,13 @@
 # Sprint 5 — Recommendation
 
-**Status:** PROPOSED — Product Owner review. Planning authorized (Sprint 5
-Planning Authorization); **implementation is NOT authorized.** Planning
-documents are committed to a planning PR; implementation begins only after
-the Product Owner approves this recommendation, ADR-003, and the
-accompanying Sprint 5 planning documents, and that planning PR merges.
-**Date:** 2026-09-18
+**Status:** Theme **APPROVED** (F3 RBAC); Product Owner scope decisions
+**FINAL (2026-09-19)** and folded in below. Still **planning only —
+implementation is NOT authorized** and begins only after the Product Owner
+approves this revised package and the planning PR (#12) merges.
+**Date:** 2026-09-18 · **Revision 1:** 2026-09-19 — Product Owner final
+decisions applied (five-role set fixed; custom roles out; single active
+role per user; F4/F7/row-level out; permission matrix finalized —
+`SPRINT5_TECHNICAL_PLAN.md` §5.2).
 **Theme:** **F3 RBAC — Role-Based Access Control**
 **Depends on:** ADR-003 (RBAC), the F1 migration runner (Sprint 0), the
 Sprint 4 `DatabaseAdapter`/`StorageProvider` seams (ADR-002).
@@ -68,12 +70,15 @@ and router shape, additively.
 **In scope — F3 RBAC core:**
 1. `roles` · `permissions` · `role_permissions` · `user_roles` tables via
    an additive `v0003_rbac` migration (F1 runner; ADR-0008).
-2. Five seeded predefined roles (Administrator/Doctor/Reception/Pharmacy/
-   Accounts); Administrator marked `is_system`.
+2. Exactly five seeded predefined roles (Administrator/Doctor/Reception/
+   Pharmacy/Accounts) — the complete Sprint 5 role set; Administrator marked
+   `is_system`.
 3. Data-driven permission catalogue with module-declared `module.action`
-   keys (configurable role→permission assignments).
-4. Single active role per user, enforced (join-table shape leaves
-   multi-role additive).
+   keys and the **finalized default role→permission matrix**
+   (`SPRINT5_TECHNICAL_PLAN.md` §5.2), derived only from functionality that
+   exists today (no keys for unbuilt modules).
+4. **One user → one active role**, enforced (no multi-role / aggregation;
+   join-table shape leaves multi-role additive for a future phase).
 5. **Route-level** authorization guard in `app/core/router.py` (extends the
    existing session guard); route→permission association in the per-module
    route registration.
@@ -106,11 +111,12 @@ controller (action-level). **Repository row-level** access control is
   boundary between minimum RBAC administration and F4.
 - **F7 encryption at rest**, `provider_credentials`, API-key/credential
   storage (ADR-002 §11 sequences these after RBAC).
-- **Runtime administrator-created custom roles** — unless the Product
-  Owner elects it (§8). Baseline is the five predefined roles with
-  configurable permissions.
+- **Runtime administrator-created custom roles** — **OUT OF SCOPE**
+  (Product Owner, FINAL 2026-09-19). Sprint 5 ships the five predefined
+  roles with configurable permissions; no custom-role creation UI/workflow.
+- **Multi-role per user** / role aggregation / permission union — **OUT OF
+  SCOPE** (Product Owner, FINAL 2026-09-19). One user → one active role.
 - **Repository row-level** access control (ADR-003 §7).
-- **Multi-role per user** — single active role enforced this phase (§8).
 - AI, OCR, WhatsApp/messaging, payment, Cloud Sync, cloud/Docker/K8s
   deployment, PostgreSQL/MySQL/SQL Server or any second database adapter,
   non-local storage providers, ORM/Alembic, any new runtime dependency,

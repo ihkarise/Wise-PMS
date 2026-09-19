@@ -104,18 +104,18 @@ roles matching `docs/modules/Roles.md`:
 | **Accounts** | Billing (when built); read of the data billing needs. |
 
 Roles live in a `roles` table (not hardcoded enum), so permission→role
-assignments are editable by an Administrator without a code change.
+assignments are editable by an Administrator without a code change. **These
+five are the complete role set for Sprint 5; no additional roles are added
+this phase (Product Owner, FINAL 2026-09-19).**
 
-**DEFERRED / PRODUCT OWNER DECISION — administrator-created custom roles.**
-`docs/modules/Roles.md` lists "Custom Roles" as a target capability, and
-the data-driven model *structurally supports* an Administrator creating a
-brand-new role at runtime. Whether Sprint 5 ships that create-a-new-role
-capability, versus shipping the five predefined roles with **configurable
-permission assignments only**, is not resolved by the repository. This ADR
-**recommends** the latter as the Sprint 5 baseline (fully repo-supported,
-lower surface) and flags runtime custom-role creation as a Product Owner
-decision (see `SPRINT5_RECOMMENDATION.md` §Non-goals and the Product Owner
-decisions list). The schema below accommodates either without change.
+**OUT OF SCOPE — administrator-created custom roles (Product Owner, FINAL
+2026-09-19).** `docs/modules/Roles.md` lists "Custom Roles" as a *target*
+capability, and the data-driven model stays structurally compatible with a
+future Administrator creating a brand-new role at runtime. **Sprint 5 does
+not ship that capability** — no custom-role creation UI or workflow. Sprint
+5 ships the five predefined roles with **configurable permission
+assignments only**. The schema below remains compatible with future
+configurable roles without change.
 
 ## 3. Decision — the permission model
 
@@ -134,12 +134,14 @@ backup.run         audit.view           rbac.manage
 
 - Each module **declares** the permission keys it owns (a registry the
   RBAC core reads), so a future module adds keys without editing RBAC.
-- The **exact enumerated catalogue** is drafted in
-  `SPRINT5_TECHNICAL_PLAN.md` and finalized during implementation against
-  the actual routes/actions present at that time; this ADR fixes the
-  *shape* (key format + data-driven registry), not the final key list.
+- The **concrete Sprint 5 catalogue and the default role→permission
+  matrix are FINAL** (Product Owner, 2026-09-19) and specified in
+  `SPRINT5_TECHNICAL_PLAN.md` §5.2, derived only from functionality that
+  exists today (no keys invented for unbuilt appointments/dispensing/
+  billing/inventory/audit-viewing). This ADR fixes the *shape* (key format
+  + data-driven registry); §5.2 fixes the *content*.
 - `rbac.manage` is the permission that gates the RBAC administration
-  surface itself.
+  surface itself. Administrator holds the complete Sprint 5 permission set.
 
 ## 4. Decision — role↔permission and user↔role relationships
 
@@ -156,16 +158,13 @@ user_roles       (user_id FK, role_id FK, PRIMARY KEY(user_id, role_id))
 - `role_permissions` is the configurable many-to-many that makes
   permissions editable per role.
 - `user_roles` binds users to roles. **Sprint 5 enforces exactly one
-  active role per user** (a single-role invariant), while the join-table
-  shape leaves multi-role support as a future additive capability with no
-  schema change.
+  active role per user (Product Owner, FINAL 2026-09-19)** — a single-role
+  invariant. **No role aggregation or permission union across multiple
+  active roles is implemented.** The join-table shape leaves multi-role
+  support as a future additive capability with no schema change, but
+  multi-role is **out of scope** this phase.
 - `is_system` marks the seeded predefined roles (notably Administrator) so
   the management surface can protect them from deletion.
-
-**PRODUCT OWNER DECISION — user↔role cardinality.** Single-role-per-user
-is the recommended Sprint 5 enforcement; the `user_roles` join is chosen
-over a bare `users.role_id` column specifically so multi-role is later
-additive. The Product Owner confirms single vs. multi-role for this phase.
 
 ## 5. Decision — the existing `users.role` column
 
@@ -239,23 +238,32 @@ unnecessary layer with no current requirement.
 
 ## 8. Decision — denial behavior
 
-**DECIDED NOW — fail-closed.** When a user lacks a required permission:
-- Route-level: the router renders a friendly **"You don't have permission
-  to view this"** outcome (a dedicated view and/or a snackbar), never a
-  raw error and never the guarded handler — mirroring how the session
-  guard already diverts to `/login` and how dispatch errors already show a
-  snackbar rather than a traceback.
-- Action-level: the service raises a typed authorization error the
-  controller renders as the same friendly denial; the mutation does not
-  occur.
-- Every denial is **audited** (`audit_logs`) so attempted access is
-  traceable, consistent with `SECURITY.md` rule 2.
+**DECIDED NOW — fail-closed, four cases FINAL (Product Owner, 2026-09-19);
+full specification in `SPRINT5_TECHNICAL_PLAN.md` §8:**
 
-Unguarded routes: sensitive routes **must** carry an explicit permission
-before merge (enforced by the testing plan's route-coverage assertion —
-`SPRINT5_TESTING_PLAN.md`). The default for a route that legitimately needs
-no permission beyond being logged in (e.g. the dashboard landing) is
-documented explicitly, not left implicit.
+1. **Authenticated user lacking the permission** — route: a friendly
+   **"You don't have permission"** denial view (never the handler, never a
+   traceback); action: a typed `AuthorizationError` → friendly snackbar,
+   **no mutation**. Audited.
+2. **Unauthenticated user** — the existing session guard runs first and
+   diverts to `/login` (unchanged); the permission guard runs only after
+   authentication.
+3. **Nonexistent / unknown permission key** — denied for everyone
+   (including Administrator): the key is in no resolved permission set, so
+   the fail-closed guard denies it and the route-coverage test blocks such
+   a route from shipping.
+4. **Unknown / unrecognized legacy `users.role` at migration** — mapped to
+   a documented **non-locking, zero-permission** state (no binding), never
+   silently Administrator; the user lands on the denial view until an
+   Administrator assigns a role. The clinic is never locked out (the
+   at-least-one-active-Administrator invariant, §6, holds).
+
+Every denial is **audited** (`audit_logs`, `SECURITY.md` rule 2). Sensitive
+routes **must** carry an explicit permission before merge (route-coverage
+assertion — `SPRINT5_TESTING_PLAN.md`); the only routes that need no
+permission are `/login` (unauthenticated) and the logged-in landing
+(`dashboard.view`, held by all five roles) — documented explicitly, not
+left implicit.
 
 ## 9. Relationship with existing Settings (ADR-002 §6.6)
 
@@ -287,7 +295,9 @@ table, and does not relax the §8.1 SQLite-over-network prohibition. Sprint
   `SPRINT5_RECOMMENDATION.md`.
 - **F7 encryption at rest**, `provider_credentials`, API-key storage
   (ADR-002 §11 sequences these after RBAC).
-- Runtime **custom-role creation** unless the Product Owner elects it (§2).
+- Runtime **custom-role creation** (Product Owner, FINAL — out of scope §2).
+- **Multi-role per user** / role aggregation / permission union (Product
+  Owner, FINAL — out of scope §4).
 - **Row-level** access control (§7).
 - AI, OCR, WhatsApp/messaging, payment, Cloud Sync, cloud/Docker/K8s
   deployment, any second database/storage adapter, any ORM/Alembic, any
@@ -364,7 +374,12 @@ RBAC administration as a **separate Administrator-only surface** (gated by
 `rbac.manage`), **not** a widening of the F2 clinic-profile Settings UI.
 RBAC **does not** change any ADR-002 deployment tier and is a
 **prerequisite for**, never an **enabler of**, networked/multi-user
-deployment. **Runtime custom-role creation, user↔role cardinality beyond
-single-role, F4 user management, F7 encryption, and row-level access
-control are out of scope for Sprint 5.** Await Product Owner approval
-before any implementation.
+deployment. The concrete permission catalogue and default role→permission
+matrix are FINAL in `SPRINT5_TECHNICAL_PLAN.md` §5.2; the four-case
+fail-closed denial model is FINAL in §8. **Per the Product Owner's final
+Sprint 5 decisions (2026-09-19): the five predefined roles are the complete
+set; runtime custom-role creation is out of scope; user↔role cardinality is
+one active role per user (no multi-role/aggregation); F4 user management
+beyond minimum RBAC administration, F7 encryption, and row-level access
+control are out of scope.** Await Product Owner approval before any
+implementation.

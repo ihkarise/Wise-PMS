@@ -85,13 +85,16 @@ still allows the action)
 - **Verification:** Enforcement tests bypass the UI and call services/routes
   directly under a low-privilege role; denial must hold without any UI.
 
-## R8 — Scope creep (RBAC pulls in F4 / F7 / custom roles / row-level)
+## R8 — Scope creep (RBAC pulls in F4 / F7 / custom roles / multi-role / row-level)
 - **Likelihood:** Medium (RBAC is a classic magnet — mirrors
   `SPRINT4_RECOMMENDATION.md` CR6).
 - **Impact:** Medium (risk-budget and reviewability blown).
-- **Mitigation:** Non-goals fixed in ADR-003 §11 and
-  `SPRINT5_RECOMMENDATION.md` §6/§7; the F4 boundary table; enforcement
-  depth capped at two seams.
+- **Mitigation:** Non-goals **FINAL** (Product Owner, 2026-09-19): five-role
+  set fixed, **custom roles out**, **multi-role/aggregation out**, F4 beyond
+  minimum RBAC admin out, F7 out, row-level out — fixed in ADR-003 §2/§4/§11
+  and `SPRINT5_RECOMMENDATION.md` §6/§7; the F4 boundary table; enforcement
+  depth capped at two seams; the matrix (`SPRINT5_TECHNICAL_PLAN.md` §5.2)
+  defines no keys for unbuilt modules.
 - **Verification:** `test_layering.py` extended to bar out-of-scope tech and
   hold `requirements.txt == {flet, bcrypt}`; the milestone checklist's final
   gate checks the diff against the non-goals.
