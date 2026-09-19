@@ -4,6 +4,31 @@
 > Add an ADR whenever a phase makes a structural choice.
 > **Last updated:** 2026-09-18. See also [`.ai/DECISION_LOG.md`](../.ai/DECISION_LOG.md).
 
+## ADR-0011 — RBAC foundation (roles/permissions/bindings + migration)
+**Status:** Accepted (Sprint 5 / F3, Milestone 1). Implements
+[`architecture-decisions/ADR-003-Role-Based-Access-Control.md`](./architecture-decisions/ADR-003-Role-Based-Access-Control.md).
+Migration `v0003_rbac` (additive + reversible) adds `roles`, `permissions`,
+`role_permissions`, and `user_roles`, seeds the five approved roles
+(Administrator/Doctor/Reception/Pharmacy/Accounts), the 16-permission
+catalogue, and the default role→permission matrix
+(`docs/planning/SPRINT5_TECHNICAL_PLAN.md` §5.2). A UNIQUE index
+`idx_user_roles_user` enforces **one active role per user** at the database
+level; a new `app/modules/roles/` service enforces the **at-least-one-active-
+Administrator** invariant on assignment. The legacy `users.role` column is
+kept as a non-authoritative hint (`user_roles` is authoritative); the existing
+`admin` account is bound to Administrator by the migration (existing DBs) and
+by `init_db` (fresh DB), with no credential change.
+**Why:** closes the top security/compliance gap (`KNOWN_LIMITATIONS.md` L4,
+`SECURITY.md`): `users.role` was decorative. RBAC is the P1 foundation
+sequenced after the Sprint 4 seams and before F7 (ADR-002 §11).
+**Consequence:** this milestone is the **database/domain foundation only** —
+no route guard, no service authorization check, no RBAC UI (later, separately
+authorized milestones). Additive schema; no engine/dependency change.
+**Intentional golden change (rule 12/13):** the regression golden's `TABLES:`
+line gains `permissions`/`role_permissions`/`roles`/`user_roles` and its
+`INDEXES:` line gains `idx_user_roles_user`; nothing else changed. Tests:
+72 passing (56 prior + 16 new `tests/test_rbac_foundation.py`).
+
 ## ADR-0010 — DatabaseAdapter + StorageProvider seams; clinic-profile-only Settings
 **Status:** Accepted (Sprint 4). Implements
 [`architecture-decisions/ADR-002-Cloud-Ready-Architecture.md`](./architecture-decisions/ADR-002-Cloud-Ready-Architecture.md)
