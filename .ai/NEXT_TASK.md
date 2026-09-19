@@ -34,7 +34,15 @@ Delivered:
 Nothing. Sprint 4 is closed; no further action is required on it.
 
 ## Next
-Sprint 5 has not yet been scoped or approved. When Sprint 5 planning
-begins, the Product Owner's options to consider are recorded in
-`docs/planning/SPRINT4_RECOMMENDATION.md` §2 and `.ai/NEXT_PHASE.md` —
-this file does not decide Sprint 5's scope.
+**Sprint 5 planning (F3 RBAC) is finalized and awaiting Product Owner
+approval.** The theme is approved and the Product Owner's scope decisions
+are **FINAL (2026-09-19)**: five-role set fixed; custom roles out; one
+active role per user (no multi-role); F4 (beyond minimum RBAC admin), F7,
+and row-level authorization out. The permission catalogue + default
+role→permission matrix are finalized (`SPRINT5_TECHNICAL_PLAN.md` §5.2) and
+the four-case denial model is finalized (§8). The package lives on branch
+`claude/sprint-5-planning` (PR #12): `ADR-003` plus the six
+`docs/planning/SPRINT5_*.md` documents. The single next task is the
+**Product Owner's approval** of the revised package. **Implementation is
+NOT authorized** and must not begin until the Product Owner approves and the
+planning PR merges.

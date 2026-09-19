@@ -1,14 +1,25 @@
 # .ai/CURRENT_PHASE.md
 
-**Phase:** Sprint 4 — Cloud-Ready Architecture Seams + Settings UI (ADR-002)
+**Phase:** Sprint 5 — F3 RBAC (Role-Based Access Control) — **PLANNING**
+**Status:** 🟡 PLANNING (planning only — implementation NOT authorized).
+Sprint 4 is CLOSED (see below); the Product Owner authorized Sprint 5
+*planning*. The planning package is drafted on branch
+`claude/sprint-5-planning`: `docs/architecture-decisions/ADR-003-Role-Based-
+Access-Control.md` plus `docs/planning/SPRINT5_{RECOMMENDATION,TECHNICAL_PLAN,
+FILE_MAP,RISK_ASSESSMENT,TESTING_PLAN,MILESTONE_CHECKLIST}.md`. **Awaiting
+Product Owner review; no `app/` code, tests, or migrations are changed by
+the planning PR.**
+**Branch:** `claude/sprint-5-planning` (planning docs only; base `main` `eb9fb92`)
+**Updated:** 2026-09-18 (Sprint 5 planning drafted)
+
+---
+
+## Sprint 4 — CLOSED (prior phase)
 **Status:** ✅ CLOSED — planning (PR #10) and implementation (PR #11) both
 reviewed and merged into `main`. Post-merge final verification completed:
 `main` HEAD `18ff96d` contains implementation commit `0523d3c`; 56/56 tests
 passing; regression golden byte-identical; deployment-tier documentation
-verified consistent; no scope creep detected. **Repository is ready for
-Sprint 5 planning.**
-**Branch:** merged to `main` (was `claude/sprint-4-implementation`)
-**Updated:** 2026-09-18 (closed)
+verified consistent; no scope creep detected.
 
 ## Goal
 Close the two concrete architecture gaps ADR-002 found (no database

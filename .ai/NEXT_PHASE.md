@@ -2,6 +2,16 @@
 
 **Updated:** 2026-09-18
 
+> **Planning status:** Theme **APPROVED** (F3 RBAC). Product Owner scope
+> decisions are **FINAL (2026-09-19)**: five-role set fixed; custom roles
+> out; one active role per user (no multi-role); F4 (beyond minimum RBAC
+> admin), F7, and row-level authorization out. The permission catalogue +
+> default matrix (`SPRINT5_TECHNICAL_PLAN.md` §5.2) and the denial model
+> (§8) are finalized. The package is on branch `claude/sprint-5-planning`
+> (PR #12): `ADR-003` plus `docs/planning/SPRINT5_{RECOMMENDATION,
+> TECHNICAL_PLAN,FILE_MAP,RISK_ASSESSMENT,TESTING_PLAN,MILESTONE_CHECKLIST}.md`.
+> **Awaiting Product Owner approval — implementation is NOT authorized.**
+
 ## Recommendation: Sprint 5 — RBAC (backlog F3)
 
 ### Why this next
