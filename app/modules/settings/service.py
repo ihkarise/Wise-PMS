@@ -15,6 +15,8 @@ from typing import Optional
 
 from app.core.storage import get_storage
 from app.modules.audit.service import log_action
+from app.modules.roles import permissions as perms
+from app.modules.roles.service import require_permission
 from app.modules.settings.repository import SETTINGS_FIELDS, SettingsRepository
 
 _repo = SettingsRepository()
@@ -33,6 +35,7 @@ def update_clinic_settings(data: dict, user_id: int) -> dict:
     """Update the clinic-profile fields. Rejects any key outside
     `SETTINGS_FIELDS` -- the Configuration-boundary enforcement point
     (ADR-002 §5.2/§6.6; see tests/test_settings_domain.py)."""
+    require_permission(user_id, perms.SETTINGS_EDIT)
     disallowed = set(data) - set(SETTINGS_FIELDS)
     if disallowed:
         raise ValueError(
@@ -56,6 +59,7 @@ def upload_logo(source_path: str, user_id: int) -> dict:
     """Store a new clinic logo via the StorageProvider (ADR-002 §5.1) and
     persist its path through the same whitelist/audit path as every other
     clinic-profile field. Returns the updated settings row."""
+    require_permission(user_id, perms.SETTINGS_EDIT)
     current = get_clinic_settings() or {}
     ext = os.path.splitext(source_path)[1].lower() or ".png"
     key = os.path.join("data", f"clinic_logo{ext}")

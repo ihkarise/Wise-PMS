@@ -21,6 +21,8 @@ from app.modules.audit.service import log_action
 from app.modules.cases.service import get_case
 from app.modules.consultation.repository import ConsultationRepository
 from app.modules.patients.service import get_patient
+from app.modules.roles import permissions as perms
+from app.modules.roles.service import require_permission
 from app.modules.visits.service import create_visit
 
 _repo = ConsultationRepository()
@@ -82,6 +84,7 @@ def open_or_create_draft(patient_id: int, case_id: int, user_id: int) -> dict:
 def save_consultation(consultation_id: int, fields: dict, user_id: int) -> dict:
     """Persist clinical fields. First write flips draft -> in_progress. Editing a
     completed/locked record is rejected."""
+    require_permission(user_id, perms.CONSULTATION_EDIT)
     c = _require(consultation_id)
     if c["status"] not in _EDITABLE:
         raise ConsultationLifecycleError(
@@ -96,6 +99,7 @@ def save_consultation(consultation_id: int, fields: dict, user_id: int) -> dict:
 
 def complete_consultation(consultation_id: int, user_id: int) -> dict:
     """Finalize the document (-> completed). Idempotent if already completed."""
+    require_permission(user_id, perms.CONSULTATION_EDIT)
     c = _require(consultation_id)
     if c["status"] == "completed":
         return c
@@ -106,6 +110,7 @@ def complete_consultation(consultation_id: int, user_id: int) -> dict:
 def amend_consultation(consultation_id: int, user_id: int) -> dict:
     """Reopen a completed document for amendment (audited). Later-phase surface;
     the transition is guarded here now."""
+    require_permission(user_id, perms.CONSULTATION_EDIT)
     return _transition(consultation_id, "amended", user_id,
                        "Consultation Amended")
 
@@ -113,6 +118,7 @@ def amend_consultation(consultation_id: int, user_id: int) -> dict:
 def lock_consultation(consultation_id: int, user_id: int) -> dict:
     """Seal a document for medico-legal retention (terminal, immutable).
     Later-phase surface; the transition is guarded here now."""
+    require_permission(user_id, perms.CONSULTATION_EDIT)
     return _transition(consultation_id, "locked", user_id, "Consultation Locked")
 
 

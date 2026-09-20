@@ -9,6 +9,8 @@ analytics.
 from typing import List, Optional
 
 from app.modules.audit.service import log_action
+from app.modules.roles import permissions as perms
+from app.modules.roles.service import require_permission
 from app.modules.visits.repository import VisitRepository
 from app.utils.prescription import extract_prescription_items
 
@@ -23,6 +25,7 @@ __all__ = [
 
 
 def create_visit(patient_id: int, data: dict, user_id: int) -> int:
+    require_permission(user_id, perms.VISITS_MANAGE)
     items = extract_prescription_items(data.get("prescription_notes"))
     visit_id = _repo.create(patient_id, data, user_id, items)
     log_action(user_id, "Visit Created", "visit", visit_id, "")
@@ -30,6 +33,7 @@ def create_visit(patient_id: int, data: dict, user_id: int) -> int:
 
 
 def update_visit(visit_id: int, data: dict, user_id: int) -> None:
+    require_permission(user_id, perms.VISITS_MANAGE)
     items = extract_prescription_items(data.get("prescription_notes"))
     _repo.update(visit_id, data, items)
     log_action(user_id, "Visit Updated", "visit", visit_id, "")

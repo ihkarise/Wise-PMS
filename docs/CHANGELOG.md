@@ -6,6 +6,25 @@ All notable changes to WiseOS Health / Wise PMS. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Sprint 5 — RBAC action-level enforcement (F3 / ADR-003), Milestone 4.**
+  Sensitive service/controller operations now call
+  `roles.service.require_permission(user, key)` at their action boundary, so
+  they stay protected even if invoked without passing through the router
+  (defense-in-depth beneath the Milestone 3 route guard). Enforced:
+  `create_patient`→registration.create, `update_patient`→patients.edit,
+  `deactivate_patient`→patients.deactivate, `create_case`/`update_case`→
+  cases.manage, `create_visit`/`update_visit`→visits.manage,
+  `save/complete/amend/lock_consultation`→consultation.edit,
+  `add_attachment`→attachments.upload, `delete_attachment`→attachments.delete,
+  `update_clinic_settings`/`upload_logo`→settings.edit; and the shell's
+  "Backup" action→backup.run (checked where the session user is available;
+  `backup_now()` itself stays user-agnostic). Resolution goes through
+  `user_roles`; `users.role` is never read; denial fails closed and the
+  mutation does not run. No new permissions, no schema change, no golden
+  change, router enforcement unchanged. New
+  `tests/test_action_authorization.py` proves authorized success, unauthorized
+  denial, and that the underlying mutation does not persist on denial.
+  `python3 -m pytest -q` → 113 passing (101 prior + 12 new).
 - **Sprint 5 — RBAC router enforcement (F3 / ADR-003), Milestone 3.** The
   central router (`app/core/router.py`) now runs a **permission guard** after
   its existing session guard: each route declares a required permission (via

@@ -4,6 +4,8 @@ from typing import List, Optional
 
 from app.modules.audit.service import log_action
 from app.modules.patients.repository import PATIENT_FIELDS, PatientRepository
+from app.modules.roles import permissions as perms
+from app.modules.roles.service import require_permission
 
 _repo = PatientRepository()
 
@@ -16,6 +18,7 @@ __all__ = [
 
 def create_patient(data: dict, user_id: int) -> dict:
     """Create a patient. Returns the saved patient (with reg_no)."""
+    require_permission(user_id, perms.REGISTRATION_CREATE)
     patient_id = _repo.create(data)
     saved = _repo.get(patient_id)
     log_action(user_id, "Patient Created", "patient", patient_id,
@@ -24,6 +27,7 @@ def create_patient(data: dict, user_id: int) -> dict:
 
 
 def update_patient(patient_id: int, data: dict, user_id: int) -> None:
+    require_permission(user_id, perms.PATIENTS_EDIT)
     _repo.update(patient_id, data)
     log_action(user_id, "Patient Updated", "patient", patient_id,
                f"Updated {data.get('name', '')}")
@@ -31,6 +35,7 @@ def update_patient(patient_id: int, data: dict, user_id: int) -> None:
 
 def deactivate_patient(patient_id: int, user_id: int) -> None:
     """Soft delete — patients are never physically removed."""
+    require_permission(user_id, perms.PATIENTS_DEACTIVATE)
     _repo.deactivate(patient_id)
     log_action(user_id, "Patient Deactivated", "patient", patient_id, "")
 

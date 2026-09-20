@@ -4,6 +4,8 @@ import flet as ft
 
 from app.modules.authentication.service import logout
 from app.modules.backup.service import backup_now
+from app.modules.roles import permissions as perms
+from app.modules.roles.service import AuthorizationError, require_permission
 from app.shared import theme as t
 
 
@@ -20,9 +22,16 @@ def shell(page: ft.Page, route: str, body: ft.Control) -> ft.View:
         page.go("/login")
 
     def do_backup(e):
+        # Action-level authorization (RBAC, F3 / ADR-003). backup_now() itself
+        # takes no user, so the check lives at this action boundary where the
+        # session user is available — fail-closed before any backup runs.
         try:
+            require_permission(user, perms.BACKUP_RUN)
             path = backup_now()
             t.snack(page, f"Backup created: {path}")
+        except AuthorizationError:
+            t.snack(page, "You don't have permission to run a backup.",
+                    error=True)
         except Exception:
             t.snack(page, "Backup failed. Please try again.", error=True)
 
