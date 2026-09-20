@@ -1,7 +1,7 @@
 # WiseOS Health — Roadmap
 
 > **Status:** Living document. Reviewed at the end of every phase.
-> **Last updated:** 2026-07-20.
+> **Last updated:** 2026-09-20 (F3 RBAC delivered — Sprint 5, ADR-003).
 
 Phases are **independently deployable** and **gated by Product Owner approval**.
 No phase begins automatically. Each phase ships: architecture updates, doc
@@ -15,6 +15,7 @@ updates, tests, a manual test checklist, migration notes, and a changelog entry.
 | Sprint 2 | Cases, Visits, Prescription intelligence, Timeline, Attachments | ✅ shipped |
 | Architecture Refactor | Domain-driven modules, core/router, repository + model layers, tests | ✅ shipped (PR #1) |
 | Phase 1 | **Project Memory System** (this docs/ + .ai/ set) | ✅ this phase |
+| Sprint 5 | **RBAC (F3)** — 5 roles, 16 permissions, router + action enforcement, `/admin/roles` | ✅ shipped (ADR-003) |
 
 ## Near-term (candidate order — needs approval per phase)
 
@@ -22,7 +23,7 @@ updates, tests, a manual test checklist, migration notes, and a changelog entry.
 | ----- | ----------- | ------- | ---- |
 | 2 | **DB migrations + schema versioning** | Highest-severity code gap; unblocks every future table | Low |
 | 3 | **Settings UI** (clinic/branding, over existing `settings` table) | Table exists, no UI; needed by print/WhatsApp | Low |
-| 4 | **RBAC** (Administrator/Doctor/Reception/Pharmacy/Accounts + custom) | `role` column decorative today; compliance | Medium |
+| ~~4~~ | ~~**RBAC** (Administrator/Doctor/Reception/Pharmacy/Accounts)~~ ✅ **Delivered (Sprint 5, F3 / ADR-003)** — five predefined roles (custom roles out of scope), 16 permissions, router + service/action enforcement, `/admin/roles` admin surface; `users.role` now legacy/non-authoritative | done | — |
 | 5 | **Consultation Workspace** (one integrated screen after case creation) | "The heart of the software" | High |
 | 6 | **Protocol Engine** (reusable clinical templates) | Powers consultation + prescriptions | Medium |
 | 7 | **Wise Printer** (prescription/invoice/label templates) | Consultation output | Medium |
