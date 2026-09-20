@@ -48,6 +48,22 @@ there.
 Nothing lower imports anything higher. `config`, `shared`, `utils` are leaf
 dependencies anyone may use.
 
+**Authorization layering (RBAC — F3, Sprint 5 / ADR-003, delivered).** On top
+of the session/authentication guard, access control is enforced along:
+
+```
+authentication → router permission guard → service/controller action guard → business operation
+```
+
+The router (`core/router.py`) guards each route by a required permission; the
+service/controller layer independently re-checks sensitive actions with
+`roles.service.require_permission`. Authorization resolves through
+`user_roles → role_permissions → permissions` (five roles, 16 permissions,
+one active role per user); `users.role` is a non-authoritative legacy hint.
+`core/router.py` receives the permission check by injection and imports no
+RBAC module, preserving the dependency rule. Row-level (per-row) authorization
+is deferred; the repository remains its designated future seam.
+
 ## 2. Target folder structure
 
 ```
@@ -105,7 +121,8 @@ real code, following the template in §5.
 
 | Business module | Status | Backing tables (current or planned) | Notes |
 | --------------- | ------ | ----------------------------------- | ----- |
-| Authentication  | ✅ built | `users` | bcrypt; add RBAC later |
+| Authentication  | ✅ built | `users` | bcrypt session login |
+| Roles / RBAC    | ✅ built | `roles`, `permissions`, `role_permissions`, `user_roles` | F3 (Sprint 5, ADR-003): 5 roles, 16 permissions, router + action enforcement; `/admin/roles` admin surface (`rbac.manage`) |
 | Patients        | ✅ built | `patients` | CRUD, search, soft-delete |
 | Registration    | ✅ built | `patients` | thin flow over Patients |
 | Case Records    | ✅ built | `patient_cases` | narrative-first |
@@ -130,7 +147,7 @@ real code, following the template in §5.
 | Telemedicine    | 🔜 planned | `sessions` (new) | online consult |
 | Patient Portal  | 🔜 planned | (separate front-end) | |
 | AI Assistant    | 🔜 planned | (service + integrations) | clinical workflows |
-| Administration  | 🔜 planned | `users`, `roles` | user mgmt + RBAC |
+| Administration  | 🟡 partial | `users`, `roles` | RBAC administration built (`/admin/roles`, F3); full user management (create/deactivate/credentials) is F4, still planned |
 
 ## 4. How this prepares the stated future products
 

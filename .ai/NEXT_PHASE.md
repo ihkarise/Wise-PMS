@@ -1,53 +1,37 @@
 # .ai/NEXT_PHASE.md — Proposed next phase (needs approval)
 
-**Updated:** 2026-09-18
+**Updated:** 2026-09-20
 
-> **Planning status:** Theme **APPROVED** (F3 RBAC). Product Owner scope
-> decisions are **FINAL (2026-09-19)**: five-role set fixed; custom roles
-> out; one active role per user (no multi-role); F4 (beyond minimum RBAC
-> admin), F7, and row-level authorization out. The permission catalogue +
-> default matrix (`SPRINT5_TECHNICAL_PLAN.md` §5.2) and the denial model
-> (§8) are finalized. The package is on branch `claude/sprint-5-planning`
-> (PR #12): `ADR-003` plus `docs/planning/SPRINT5_{RECOMMENDATION,
-> TECHNICAL_PLAN,FILE_MAP,RISK_ASSESSMENT,TESTING_PLAN,MILESTONE_CHECKLIST}.md`.
-> **Awaiting Product Owner approval — implementation is NOT authorized.**
+> **Status:** Sprint 5 — **F3 RBAC is DELIVERED** (implemented M1–M5,
+> security-audited, documentation closed on branch
+> `claude/sprint-5-implementation`; awaiting the Sprint 5 PR / Product Owner
+> release authorization). It is no longer a planned/proposed phase. The
+> **next phase after Sprint 5 has not been scoped or authorized** — it
+> requires Product Owner planning/authorization. No future feature is
+> committed here.
 
-## Recommendation: Sprint 5 — RBAC (backlog F3)
+## Candidate next phases (from the existing backlog — not yet authorized)
 
-### Why this next
-Per `docs/planning/SPRINT4_RECOMMENDATION.md` §2: F3 scores nearly as
-high as Sprint 4's items and is genuinely urgent (Security.md: "any
-logged-in user can do anything" today). It was deliberately **not**
-bundled into Sprint 4 to keep that phase's risk scoped to two pure
-refactors + one narrow UI module. ADR-002 §11 sequences RBAC *after* the
-`DatabaseAdapter`/`StorageProvider` seams (so its future row-level
-enforcement is written against the final repository shape) but *before*
-encryption at rest (F7) and before any future Administrator/Security
-settings surface that would host database/storage/backup-destination/
-API-key configuration (ADR-002 §6.6).
+The repository roadmap and `MASTER_BACKLOG.md` establish these as the
+natural follow-ons once RBAC (F3) is in place. They are candidates only;
+the Product Owner selects and authorizes the next sprint.
 
-### Scope
-- Roles/permissions schema (additive migration via the F1 runner).
-- Route/action guards in `core/router.py` and per-module controllers.
-- `users.role` becomes enforced, not decorative.
-- Tests: permission-guard unit tests + a router-contract extension per
-  guarded route; regression golden stays green (or changes intentionally
-  and documentedly per rule 12/13).
-- Docs: update `SECURITY.md` (close the RBAC gap), `KNOWN_LIMITATIONS.md`
-  (close L4), `CHANGELOG.md`, `DECISIONS.md` (new ADR), and this file.
+1. **F4 — User management screen** (create/deactivate users, credential
+   reset). Depends on F3 (now delivered). Sprint 5 deliberately shipped only
+   the *minimum* RBAC administration (existing-user → role assignment); full
+   user lifecycle management is F4 and remains out of scope until authorized.
+2. **F7 — Encryption at rest** for PHI. Sequenced *after* RBAC (ADR-002 §11);
+   required before any `provider_credentials`/BYO-key (AI Gateway) work.
+3. **Consultation Workspace feeders** (Protocol Engine / Wise Printer / OCR)
+   — higher clinical value, now able to be built with RBAC gating who may
+   use them.
 
-### Risk
-Medium. Larger surface than Sprint 4 (touches every existing module's
-routes), but additive (new tables, new guard checks) and gated per-route.
+## Sequencing note (unchanged)
+ADR-002 §11 orders foundation work: the Sprint 4 seams → **F3 RBAC (done)**
+→ F7 encryption → AI Gateway / `provider_credentials` → Cloud Sync (only
+once a server-grade `DatabaseAdapter` is Production-supported). Networked/
+multi-user surfaces still require F3 **and** F7 first (SECURITY.md rule 1).
 
-### Alternatives (if the Owner prefers)
-1. **F7 Encryption at rest** — also urgent, but ADR-002 §11 sequences it
-   *after* RBAC.
-2. **Consultation Workspace feeders (Protocol Engine / Wise Printer /
-   OCR)** — higher clinical value, but better built against the
-   Sprint 4 seams *and* with RBAC already gating who can use them.
-3. **AI Gateway skeleton + `provider_credentials`** — explicitly blocked
-   until F3 and F7 both land (ADR-002 §6.5/§11).
-
-### Do not start until
-The Product Owner approves. Per the charter, no phase begins automatically.
+## Do not start until
+The Product Owner scopes and approves the next phase. Per the charter, no
+phase begins automatically.
