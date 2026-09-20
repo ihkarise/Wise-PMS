@@ -4,12 +4,13 @@
 > one. **Updated:** 2026-09-20.
 
 ## Now
-**Sprint 5 (F3 RBAC, ADR-003) implementation is COMPLETE and audited.**
-Milestones M1–M5 are implemented on branch `claude/sprint-5-implementation`
-(5 commits, HEAD `ebe58fb`, 5 ahead / 0 behind `main`); each milestone
-passed its security audit; M6 documentation closure is done. 130/130 tests
-pass; the regression golden changed once intentionally (the M1 RBAC
-tables/index, rule 12/13) and not since.
+**Sprint 5 (F3 RBAC, ADR-003) is CLOSED and merged to `main`** via **PR #14**
+(merge commit `10e0738`). Milestones M1–M6 delivered and security-audited;
+each milestone passed its audit; M6 documentation closure is done. 130/130
+tests pass, layering PASS, regression golden PASS; the golden changed once
+intentionally across the sprint (the M1 RBAC tables/index, rule 12/13) and
+not since. There is **no implementation task in flight** — the next action
+is a Product Owner planning decision (see "Next").
 
 Delivered:
 - [x] M1 — `v0003_rbac` migration + `app/modules/roles/` foundation
@@ -27,10 +28,10 @@ Delivered:
   SECURITY, KNOWN_LIMITATIONS, Roles, MASTER_BACKLOG, TARGET_ARCHITECTURE).
 
 ## Blocked on
-Nothing implementation-side. The single next action is the **Product
-Owner's release step**: open the Sprint 5 pull request from
-`claude/sprint-5-implementation` into `main` and authorize its review/merge.
-No further code changes are pending.
+Nothing implementation-side, and the Sprint 5 release step is **done**
+(PR #14 merged to `main`, commit `10e0738`). The single next action is a
+**Product Owner planning decision**: scope and authorize the next phase
+(no phase begins automatically per the charter). No code changes are pending.
 
 ## Next
 Sprint 6 has **not** been scoped or authorized. Candidate follow-ons remain

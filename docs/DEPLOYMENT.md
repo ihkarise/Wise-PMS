@@ -66,8 +66,9 @@ automatically; install Poppins (free, Google Fonts) for the exact look.
   *conditionally permitted / temporary* — see the rule below. It is a
   transitional option, not the target architecture.
 - Multi-user, networked, cloud, and mobile deployments are **not yet
-  supported** until RBAC (F3), encryption at rest (F7), sync (F8), and a
-  server-grade database adapter land — see [`ROADMAP.md`](./ROADMAP.md)
+  supported**. RBAC (F3) is now delivered (Sprint 5), but encryption at rest
+  (F7), sync (F8), and a server-grade database adapter must still land first
+  — see [`ROADMAP.md`](./ROADMAP.md)
   and [`architecture-decisions/ADR-002-Cloud-Ready-Architecture.md`](./architecture-decisions/ADR-002-Cloud-Ready-Architecture.md)
   §8.0 for the full deployment-tier table.
 - CI/CD: none configured yet; a SessionStart hook / CI to run `pytest` on push

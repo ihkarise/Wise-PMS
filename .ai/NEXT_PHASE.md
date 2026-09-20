@@ -2,12 +2,11 @@
 
 **Updated:** 2026-09-20
 
-> **Status:** Sprint 5 — **F3 RBAC is DELIVERED** (implemented M1–M5,
-> security-audited, documentation closed on branch
-> `claude/sprint-5-implementation`; awaiting the Sprint 5 PR / Product Owner
-> release authorization). It is no longer a planned/proposed phase. The
-> **next phase after Sprint 5 has not been scoped or authorized** — it
-> requires Product Owner planning/authorization. No future feature is
+> **Status:** Sprint 5 — **F3 RBAC is DELIVERED and CLOSED** (implemented
+> M1–M6, security-audited, documentation closed, and **merged to `main` via
+> PR #14**, merge commit `10e0738`). It is no longer a planned/proposed
+> phase. The **next phase after Sprint 5 has not been scoped or authorized**
+> — it requires Product Owner planning/authorization. No future feature is
 > committed here.
 
 ## Candidate next phases (from the existing backlog — not yet authorized)

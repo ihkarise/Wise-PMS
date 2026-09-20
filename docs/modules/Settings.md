@@ -43,12 +43,13 @@ UI): passing a disallowed key raises `ValueError`, verified by
 `tests/test_settings_domain.py::test_update_clinic_settings_rejects_unsupported_fields`.
 
 ## Route & nav
-`^/settings$`, reachable from the header workflow bar (gear icon). Session
-guard applies like every other route. **Known accepted gap** (Security.md:
-"any logged-in user can do anything" until F3): any authenticated user can
-reach this route, but the field whitelist above limits what they can
-change to clinic-profile text/logo — never security-sensitive
-configuration.
+`^/settings$`, reachable from the header workflow bar (gear icon). Both the
+session guard **and** (since Sprint 5 / F3) the RBAC permission guard apply:
+the route requires the `settings.edit` permission, and `update_clinic_settings`/
+`upload_logo` independently re-check `settings.edit` at the service/action
+layer (defense in depth). The field whitelist above is a second, orthogonal
+limit — even a permitted user can only change clinic-profile text/logo, never
+security-sensitive configuration.
 
 ## Dependencies
 `settings.service → audit.service`, `settings.service → app.core.storage`

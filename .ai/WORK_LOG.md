@@ -1,6 +1,51 @@
 # .ai/WORK_LOG.md — Chronological work log
 
-> Append an entry per work session. Newest first. **Updated:** 2026-09-18.
+> Append an entry per work session. Newest first. **Updated:** 2026-09-20.
+
+## 2026-09-20 — Sprint 5 closure confirmation + post-merge doc synchronization
+**Type:** Documentation-only maintenance (no runtime code, tests, schema, or
+behavior changed). **Branch:** `claude/eloquent-feynman-aj24sn`.
+
+### Ground truth established
+- `git` verified: `HEAD == origin/main == 10e0738` (Merge pull request **#14**
+  from `claude/sprint-5-implementation`), working tree clean, no unexpected
+  commits. Sprint 5 (F3 RBAC, ADR-003) is **merged and CLOSED**.
+- Verified baseline green **after** merge: `python3 -m pytest -q` → **130
+  passed** (0 failed/skipped/errors/warnings); `tests/test_layering.py` → 5
+  passed; `tests/test_regression.py` (golden) → 1 passed.
+- Verified against source: migration `v0003_rbac` creates
+  `roles`/`permissions`/`role_permissions`/`user_roles` (5 roles, 16
+  permissions, `idx_user_roles_user` UNIQUE); `app/modules/roles/` +
+  `permissions.py` registry + `core/router.py` permission guard are present
+  and wired. RBAC is genuinely enforced.
+
+### Stale current-state documentation corrected
+- `.ai/CURRENT_PHASE.md`, `.ai/NEXT_TASK.md`, `.ai/NEXT_PHASE.md` — had
+  described Sprint 5 as an unmerged branch (`claude/sprint-5-implementation`,
+  HEAD `ebe58fb`) "awaiting the Sprint 5 PR / release authorization". Updated
+  to reflect the merge (PR #14, `10e0738`); next action is a Product Owner
+  planning decision only.
+- `docs/DATABASE.md` — `users.role` "RBAC not yet enforced" corrected to
+  non-authoritative/enforced-via-`user_roles`; the four RBAC tables documented
+  in full; removed from the "planned (not yet created)" list; table count and
+  date stamp updated.
+- `docs/modules/Users.md` — "role stored but not enforced" and "RBAC
+  enforcement (F3)" listed as future, corrected (F3 delivered; F4 still open).
+- `docs/modules/Settings.md` — "any authenticated user can reach this route"
+  corrected; `/settings` is now gated by `settings.edit` (router + action).
+- `docs/DEPLOYMENT.md` — F3 removed from the list of unmet multi-user
+  preconditions (F7/F8/server-grade adapter still required).
+
+### Intentionally NOT changed (historical / future records — correct as-is)
+- ADR-002, ADR-003, ADR-0011 and all `docs/planning/SPRINT*` docs (point-in-time
+  records), `docs/CHANGELOG.md` (`[Unreleased]`; no version tagging scheme),
+  `specs/*` and planned `docs/modules/*` ("Design only / not implemented"),
+  `docs/audits/*`. No implementation history rewritten.
+
+### Result
+- Re-ran after edits: **130 passed**, layering 5 passed, golden 1 passed —
+  documentation-only changes confirmed to not affect code/tests/schema.
+- No next sprint started; no feature implemented; no new migration.
 
 ## 2026-09-18 — Sprint 4: Cloud-Ready Architecture Seams + Settings UI (ADR-002)
 **Planning branch:** `claude/wiseos-architecture-review-f6gd11` (merged to

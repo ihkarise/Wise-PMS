@@ -30,8 +30,11 @@ the user chip and logout.
 
 ## Known limitations
 No user-management screen (F4), no password-change UI, default creds, no lockout
-(L6). `role` is stored but **not enforced** — see [`Roles.md`](./Roles.md).
+(L6). The legacy `users.role` column is stored but **non-authoritative** —
+RBAC (F3, Sprint 5) is enforced through `user_roles`, not this column; see
+[`Roles.md`](./Roles.md).
 
 ## Future
-User CRUD screen + RBAC enforcement (F3/F4). Passwords change flow, optional
-2FA, and account lockout before any networked deployment.
+User CRUD screen (create/deactivate users, credential reset) — **F4**, still
+open; RBAC enforcement (F3) is already delivered (Sprint 5). Password change
+flow, optional 2FA, and account lockout before any networked deployment.
