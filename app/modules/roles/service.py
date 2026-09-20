@@ -17,6 +17,7 @@ authorized milestone. Grants are resolved through the authoritative RBAC model
 from typing import List, Optional, Union
 
 from app.modules.audit.service import log_action
+from app.modules.roles import permissions as perms
 from app.modules.roles.repository import RoleRepository
 
 _repo = RoleRepository()
@@ -115,3 +116,83 @@ def assign_role(user_id: int, role_name: str, actor_id: int = None) -> None:
 
     _repo.set_user_role(user_id, role["id"])
     log_action(actor_id, "Role Assigned", "user", user_id, f"role={role_name}")
+
+
+# -- RBAC administration (Milestone 5) --------------------------------------
+# Every function here is gated by `rbac.manage` via require_permission, before
+# any read or mutation. Grants resolve through the RBAC service/repository only
+# (the UI never touches role_permissions/user_roles directly), and role
+# mutations still go through assign_role so the single-role and
+# at-least-one-active-Administrator invariants hold. `actor` is the acting
+# session user (dict/id); authorization is never derived from users.role.
+
+def list_roles_with_permissions(actor: UserRef) -> List[dict]:
+    """The predefined roles, each with its granted permission keys."""
+    require_permission(actor, perms.RBAC_MANAGE)
+    roles = _repo.list_roles()
+    for role in roles:
+        role["permissions"] = _repo.permission_keys_for_role(role["name"])
+    return roles
+
+
+def list_permission_catalogue(actor: UserRef) -> List[dict]:
+    """The approved permission catalogue (the seeded permissions table)."""
+    require_permission(actor, perms.RBAC_MANAGE)
+    return _repo.list_permissions()
+
+
+def list_users_with_roles(actor: UserRef) -> List[dict]:
+    """Active users and their current active role (read-only, for selection)."""
+    require_permission(actor, perms.RBAC_MANAGE)
+    return _repo.list_active_users_with_role()
+
+
+def _validated_role_and_permission(role_name: str, permission_key: str):
+    role = _repo.get_role_by_name(role_name)
+    if role is None:
+        raise RoleError(f"Unknown role: {role_name!r}")
+    if not perms.is_known_permission(permission_key):
+        raise RoleError(f"Unknown permission: {permission_key!r}")
+    permission = _repo.get_permission_by_key(permission_key)
+    if permission is None:
+        raise RoleError(f"Unknown permission: {permission_key!r}")
+    return role, permission
+
+
+def grant_permission(actor: UserRef, role_name: str, permission_key: str) -> None:
+    """Add an approved permission to a predefined role (idempotent)."""
+    require_permission(actor, perms.RBAC_MANAGE)
+    role, permission = _validated_role_and_permission(role_name, permission_key)
+    _repo.add_role_permission(role["id"], permission["id"])
+    log_action(_resolve_user_id(actor), "Role Permission Granted", "role",
+               role["id"], f"{role_name} + {permission_key}")
+
+
+def revoke_permission(actor: UserRef, role_name: str, permission_key: str) -> None:
+    """Remove a permission from a predefined role.
+
+    Protects the "usable Administrator" invariant (ADR-003 §4.2): `rbac.manage`
+    cannot be revoked from the Administrator role, or no one could administer
+    RBAC afterwards.
+    """
+    require_permission(actor, perms.RBAC_MANAGE)
+    role, permission = _validated_role_and_permission(role_name, permission_key)
+    if role_name == "Administrator" and permission_key == perms.RBAC_MANAGE:
+        raise RoleError(
+            "Cannot revoke rbac.manage from the Administrator role — it would "
+            "leave no one able to administer RBAC.")
+    _repo.remove_role_permission(role["id"], permission["id"])
+    log_action(_resolve_user_id(actor), "Role Permission Revoked", "role",
+               role["id"], f"{role_name} - {permission_key}")
+
+
+def admin_assign_user_role(actor: UserRef, user_id: int, role_name: str) -> None:
+    """Assign an existing user to one predefined role, gated by rbac.manage.
+
+    Delegates to assign_role so the single-active-role and
+    at-least-one-active-Administrator invariants are preserved (never calls the
+    repository's set_user_role directly)."""
+    require_permission(actor, perms.RBAC_MANAGE)
+    if not _repo.user_exists(user_id):
+        raise RoleError(f"Unknown user: {user_id!r}")
+    assign_role(user_id, role_name, actor_id=_resolve_user_id(actor))

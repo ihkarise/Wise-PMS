@@ -6,6 +6,25 @@ All notable changes to WiseOS Health / Wise PMS. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Sprint 5 — RBAC administration surface (F3 / ADR-003), Milestone 5.**
+  A minimum Administrator-only RBAC surface at `^/admin/roles$` (new
+  `app/modules/roles/controller.py` + `view.py`), gated by `rbac.manage` at
+  the router (M3) and again at every service operation (M4) — defense in
+  depth. Administrators can: view the five predefined roles, view the 16
+  approved permissions, add/remove a role's permission grants, and assign an
+  existing user to one predefined role. New service operations
+  (`list_roles_with_permissions`, `list_permission_catalogue`,
+  `list_users_with_roles`, `grant_permission`, `revoke_permission`,
+  `admin_assign_user_role`) all require `rbac.manage`, validate roles and
+  permission keys, and audit changes. User→role assignment delegates to
+  `assign_role`, preserving the one-active-role and last-Administrator
+  invariants; `rbac.manage` cannot be revoked from the Administrator role
+  (usable-Administrator invariant, ADR-003 §4.2). The shell shows an RBAC
+  admin link only to `rbac.manage` holders (convenience, not enforcement).
+  No schema change (M1 tables suffice), no migration, no new permissions,
+  still exactly five roles; `users.role` is never an authorization source;
+  no full user management (F4). New `tests/test_rbac_admin.py`. No golden
+  change. `python3 -m pytest -q` → 130 passing (113 prior + 17 new).
 - **Sprint 5 — RBAC action-level enforcement (F3 / ADR-003), Milestone 4.**
   Sensitive service/controller operations now call
   `roles.service.require_permission(user, key)` at their action boundary, so

@@ -47,6 +47,7 @@ EXPECTED_BY_HANDLER = {
     "visit_controller": reg.VISITS_VIEW,
     "workspace_controller": reg.CONSULTATION_VIEW,
     "settings_controller": reg.SETTINGS_EDIT,
+    "rbac_admin_controller": reg.RBAC_MANAGE,  # Sprint 5 M5 admin surface
 }
 
 

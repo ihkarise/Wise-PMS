@@ -5,7 +5,8 @@ import flet as ft
 from app.modules.authentication.service import logout
 from app.modules.backup.service import backup_now
 from app.modules.roles import permissions as perms
-from app.modules.roles.service import AuthorizationError, require_permission
+from app.modules.roles.service import (AuthorizationError, require_permission,
+                                       user_has_permission)
 from app.shared import theme as t
 
 
@@ -75,6 +76,14 @@ def shell(page: ft.Page, route: str, body: ft.Control) -> ft.View:
                 ft.Container(expand=True),
                 ft.IconButton(ft.Icons.SETTINGS, icon_color=t.PRIMARY,
                               tooltip="Settings", on_click=nav("/settings")),
+                # RBAC administration link — shown only to rbac.manage holders
+                # (convenience/discoverability; authorization is still enforced
+                # by the route guard and the service layer, not by hiding).
+                *([ft.IconButton(
+                    ft.Icons.ADMIN_PANEL_SETTINGS, icon_color=t.PRIMARY,
+                    tooltip="RBAC Administration",
+                    on_click=nav("/admin/roles"))]
+                  if user_has_permission(user, perms.RBAC_MANAGE) else []),
                 ft.IconButton(ft.Icons.BACKUP, icon_color=t.PRIMARY,
                               tooltip="Backup Now", on_click=do_backup),
                 ft.Container(
