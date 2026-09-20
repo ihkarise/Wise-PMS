@@ -15,12 +15,15 @@ from app.config.constants import FILE_TYPES
 from app.core.storage import get_storage
 from app.modules.attachments.repository import AttachmentRepository
 from app.modules.audit.service import log_action
+from app.modules.roles import permissions as perms
+from app.modules.roles.service import require_permission
 
 _repo = AttachmentRepository()
 
 
 def add_attachment(patient_id: int, reg_no: str, source_path: str,
                    user_id: int, visit_id: Optional[int] = None) -> int:
+    require_permission(user_id, perms.ATTACHMENTS_UPLOAD)
     original = os.path.basename(source_path)
     stem, ext = os.path.splitext(original)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -43,6 +46,7 @@ def attachments_for_patient(patient_id: int) -> List[dict]:
 
 
 def delete_attachment(attach_id: int, user_id: int) -> None:
+    require_permission(user_id, perms.ATTACHMENTS_DELETE)
     row = _repo.get(attach_id)
     if row is None:
         return

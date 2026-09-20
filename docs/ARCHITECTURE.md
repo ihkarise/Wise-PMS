@@ -310,8 +310,11 @@ erDiagram
 `patients(name|phone|reg_no|place)`.
 
 **Notes & observations:**
-- `users.role` is free text; there is **no role-based access control** yet
-  (any logged-in user can do anything).
+- `users.role` is retained only as a non-authoritative legacy hint;
+  **role-based access control is implemented** (F3, Sprint 5 / ADR-003) via the
+  `roles`/`permissions`/`role_permissions`/`user_roles` tables, enforced at the
+  router **and** the service/action level. Authorization resolves through
+  `user_roles → role_permissions → permissions`, never `users.role`.
 - `doctor_id` on cases/visits stores the **acting user id** (not a separate
   doctor entity); `patients.doctor` is a free-text name. Doctor is not modeled.
 - Soft delete exists only for `patients` (`is_active`). Cases, visits and
@@ -485,7 +488,7 @@ These are deliberate and worth **preserving** through the refactor:
 | D6 | No `.gitignore` | Real `data/wise_pms.db`, backups, `__pycache__` can be committed → data leak & noise | Medium |
 | D7 | No automated tests | Every change is manually verified; no regression guard | High |
 | D8 | No DB migration/versioning | Any future column change to an existing table has no upgrade path | High (will bite Sprint 3+) |
-| D9 | No RBAC despite `role` column | "Admin" is decorative; any user can do anything | Medium (compliance risk for a PMS) |
+| ~~D9~~ | ~~No RBAC despite `role` column~~ — **Resolved (Sprint 5, F3 / ADR-003):** data-driven RBAC (five roles, 16 permissions, router + service/action enforcement, `/admin/roles` surface, one active role per user, last-Administrator protection) | ~~"Admin" is decorative; any user can do anything~~ — authorization now via `user_roles → role_permissions → permissions`; `users.role` non-authoritative | ✅ Closed |
 | D10 | `page.update()` inside services-adjacent flows + full view rebuild on every action | Fine at small scale; O(rebuild) on every keystroke in search | Low now, Medium at scale |
 | D11 | Date handling is string-based (`YYYY-MM-DD` typed by hand) | No validation; `followup_date` typos silently stored | Medium |
 | D12 | `exports/` and `logs/` folders reserved but unused; `settings` table unused | Dead scaffolding / unfinished features | Low |
@@ -550,8 +553,11 @@ Holoscan, PillFill, mobile, cloud sync, AI workflows):
    DataTable per keystroke). Needs pagination/virtualization eventually.
 7. **SQLite single-writer** limits multi-user / multi-device concurrency —
    acceptable for a desktop clinic, but the sync story must account for it.
-8. **No RBAC / no encryption at rest** — a real PMS handling PHI will need both
-   before any cloud or multi-user deployment.
+8. **RBAC delivered (Sprint 5, F3 / ADR-003); encryption at rest still missing.**
+   Role-based access control is now implemented (five roles, 16 permissions,
+   router + service/action enforcement). Encryption at rest (F7) remains **not
+   implemented** — a real PMS handling PHI will still need it before any cloud
+   or multi-user deployment.
 
 ---
 

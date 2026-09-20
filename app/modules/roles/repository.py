@@ -21,8 +21,29 @@ class RoleRepository(BaseRepository):
         model = Role.from_row(row)
         return model.to_dict() if model else None
 
+    def get_role(self, role_id: int) -> Optional[dict]:
+        return self._one("SELECT * FROM roles WHERE id = ?", (role_id,))
+
     def list_permissions(self) -> List[dict]:
         return self._all("SELECT * FROM permissions ORDER BY key")
+
+    def get_permission_by_key(self, key: str) -> Optional[dict]:
+        return self._one("SELECT * FROM permissions WHERE key = ?", (key,))
+
+    def add_role_permission(self, role_id: int, permission_id: int) -> None:
+        """Grant one permission to a role (idempotent)."""
+        self._execute(
+            "INSERT OR IGNORE INTO role_permissions (role_id, permission_id) "
+            "VALUES (?, ?)",
+            (role_id, permission_id),
+        )
+
+    def remove_role_permission(self, role_id: int, permission_id: int) -> None:
+        """Revoke one permission from a role (no-op if not granted)."""
+        self._execute(
+            "DELETE FROM role_permissions WHERE role_id = ? AND permission_id = ?",
+            (role_id, permission_id),
+        )
 
     def permission_keys_for_role(self, role_name: str) -> List[str]:
         """The permission keys granted to a role, ascending by key."""
@@ -67,6 +88,25 @@ class RoleRepository(BaseRepository):
         return bool(self._scalar(
             "SELECT is_active FROM users WHERE id = ?", (user_id,)
         ))
+
+    def user_exists(self, user_id: int) -> bool:
+        return self._scalar(
+            "SELECT 1 FROM users WHERE id = ?", (user_id,)
+        ) is not None
+
+    def list_active_users_with_role(self) -> List[dict]:
+        """Active users with their current active role name (None if unbound).
+
+        Read-only listing used by the RBAC admin surface to pick an existing
+        user and see their role. Not user management — no create/edit/delete.
+        """
+        return self._all(
+            "SELECT u.id, u.username, u.full_name, r.name AS role_name "
+            "FROM users u "
+            "LEFT JOIN user_roles ur ON ur.user_id = u.id "
+            "LEFT JOIN roles r ON r.id = ur.role_id "
+            "WHERE u.is_active = 1 ORDER BY u.id"
+        )
 
     def count_active_administrators(self) -> int:
         """Active users currently bound to the Administrator role."""

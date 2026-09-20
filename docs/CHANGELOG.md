@@ -6,6 +6,65 @@ All notable changes to WiseOS Health / Wise PMS. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Sprint 5 — RBAC administration surface (F3 / ADR-003), Milestone 5.**
+  A minimum Administrator-only RBAC surface at `^/admin/roles$` (new
+  `app/modules/roles/controller.py` + `view.py`), gated by `rbac.manage` at
+  the router (M3) and again at every service operation (M4) — defense in
+  depth. Administrators can: view the five predefined roles, view the 16
+  approved permissions, add/remove a role's permission grants, and assign an
+  existing user to one predefined role. New service operations
+  (`list_roles_with_permissions`, `list_permission_catalogue`,
+  `list_users_with_roles`, `grant_permission`, `revoke_permission`,
+  `admin_assign_user_role`) all require `rbac.manage`, validate roles and
+  permission keys, and audit changes. User→role assignment delegates to
+  `assign_role`, preserving the one-active-role and last-Administrator
+  invariants; `rbac.manage` cannot be revoked from the Administrator role
+  (usable-Administrator invariant, ADR-003 §4.2). The shell shows an RBAC
+  admin link only to `rbac.manage` holders (convenience, not enforcement).
+  No schema change (M1 tables suffice), no migration, no new permissions,
+  still exactly five roles; `users.role` is never an authorization source;
+  no full user management (F4). New `tests/test_rbac_admin.py`. No golden
+  change. `python3 -m pytest -q` → 130 passing (113 prior + 17 new).
+- **Sprint 5 — RBAC action-level enforcement (F3 / ADR-003), Milestone 4.**
+  Sensitive service/controller operations now call
+  `roles.service.require_permission(user, key)` at their action boundary, so
+  they stay protected even if invoked without passing through the router
+  (defense-in-depth beneath the Milestone 3 route guard). Enforced:
+  `create_patient`→registration.create, `update_patient`→patients.edit,
+  `deactivate_patient`→patients.deactivate, `create_case`/`update_case`→
+  cases.manage, `create_visit`/`update_visit`→visits.manage,
+  `save/complete/amend/lock_consultation`→consultation.edit,
+  `add_attachment`→attachments.upload, `delete_attachment`→attachments.delete,
+  `update_clinic_settings`/`upload_logo`→settings.edit; and the shell's
+  "Backup" action→backup.run (checked where the session user is available;
+  `backup_now()` itself stays user-agnostic). Resolution goes through
+  `user_roles`; `users.role` is never read; denial fails closed and the
+  mutation does not run. No new permissions, no schema change, no golden
+  change, router enforcement unchanged. New
+  `tests/test_action_authorization.py` proves authorized success, unauthorized
+  denial, and that the underlying mutation does not persist on denial.
+  `python3 -m pytest -q` → 113 passing (101 prior + 12 new).
+- **Sprint 5 — RBAC router enforcement (F3 / ADR-003), Milestone 3.** The
+  central router (`app/core/router.py`) now runs a **permission guard** after
+  its existing session guard: each route declares a required permission (via
+  the registry constants in `app/modules/roles/permissions.py`) in its
+  module's `ROUTES` table, and a request is denied fail-closed unless the
+  current user holds it. The check is injected into the router
+  (`has_permission` = `roles.service.user_has_permission`, plus a
+  `denied_handler`) so the core router imports no RBAC service. Denials are
+  audited and land the user on their dashboard with a "no permission"
+  snackbar (every role holds `dashboard.view`). Route→permission map
+  (route-level keys only; action-level keys land in a later milestone):
+  `/dashboard`=dashboard.view, `/register`=registration.create,
+  `/search` & `/patient/<id>`=patients.view, `/patient/<id>/edit`=patients.edit,
+  `/patient/<id>/case…`=cases.view, `/patient/<id>/visit…`=visits.view,
+  `…/workspace`=consultation.view, `/settings`=settings.edit; `/login` is
+  public. This is **router-level enforcement only** — no service/controller/
+  repository authorization checks and no RBAC UI. New
+  `tests/test_router_authorization.py` (guard behavior, per-role matrix,
+  route coverage). No schema change, no golden change (the regression golden
+  snapshots the service layer, not routing), no new dependency.
+  `python3 -m pytest -q` → 101 passing (88 prior + 13 new).
 - **Sprint 5 — RBAC foundation (F3 / ADR-003), Milestone 1.** New migration
   `v0003_rbac` (additive + reversible) adds the `roles`, `permissions`,
   `role_permissions`, and `user_roles` tables and seeds the approved five

@@ -12,8 +12,8 @@ Legend: **P1** must-do foundation · **P2** high-value feature · **P3** later.
 | -- | ---- | -------- | ----- |
 | F1 | Schema version table + migration runner in `core/database.py` | P1 | No `ALTER TABLE` path today |
 | ~~F2~~ | ~~Settings UI over existing `settings` table~~ | — | ✅ **Closed (Sprint 4)** — clinic-profile fields only (`clinic_name`/`doctor_name`/`clinic_address`/`phone`/`email`/`logo_path`); database/storage/backup-destination/API-key/RBAC config explicitly deferred to a future Administrator surface (ADR-002 §6.6) |
-| F3 | RBAC: roles, permissions, route/action guards | P1 | `users.role` decorative — **recommended next sprint (Sprint 5)**, per `docs/planning/SPRINT4_RECOMMENDATION.md` §2 |
-| F4 | User management screen (create/deactivate users) | P2 | Depends on F3 |
+| ~~F3~~ | ~~RBAC: roles, permissions, route/action guards~~ | — | ✅ **Closed (Sprint 5, ADR-003)** — data-driven RBAC (`roles`/`permissions`/`role_permissions`/`user_roles`), five predefined roles, 16 permissions, one active role per user; enforced at the router **and** the service/controller action level; `rbac.manage`-gated admin surface at `/admin/roles`; `users.role` non-authoritative. Custom roles / multi-role / row-level authz explicitly out of scope. See [`modules/Roles.md`](./modules/Roles.md) |
+| F4 | User management screen (create/deactivate users) | P2 | Depends on F3 (now done). **Still open** — Sprint 5 shipped only minimum RBAC administration (existing-user→role assignment), not user lifecycle management |
 | F5 | Structured date handling (validation, pickers) | P2 | Dates are hand-typed strings |
 | F6 | Pagination/virtualization for large patient tables | P3 | Rebuild-per-keystroke today |
 | F7 | Encryption at rest for PHI | P2 | Needed before any sync |

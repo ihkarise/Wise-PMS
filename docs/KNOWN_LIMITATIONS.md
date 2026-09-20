@@ -3,7 +3,7 @@
 > Honest inventory of what the software does not do yet, and where it will bite.
 > Cross-referenced to backlog IDs in [`MASTER_BACKLOG.md`](./MASTER_BACKLOG.md)
 > and the tech-debt table in [`ARCHITECTURE.md`](./ARCHITECTURE.md) §11.
-> **Last updated:** 2026-07-20.
+> **Last updated:** 2026-09-20 (L4 RBAC closed — Sprint 5 / F3, ADR-003).
 
 ## Data & schema
 
@@ -17,16 +17,17 @@
 
 | # | Limitation | Impact | Backlog |
 | - | ---------- | ------ | ------- |
-| L4 | **No RBAC.** `users.role` is decorative; any logged-in user can do anything. | Compliance risk for a PMS. | F3 |
+| ~~L4~~ | ~~No RBAC. `users.role` is decorative; any logged-in user can do anything.~~ **Closed (Sprint 5, F3 / ADR-003):** data-driven RBAC (`roles`/`permissions`/`role_permissions`/`user_roles`), five roles, 16 permissions, enforced at the router **and** the service/controller action layer; authorization via `user_roles → role_permissions → permissions` (`users.role` non-authoritative); Administrator-only admin surface at `/admin/roles`. One active role per user; last-Administrator protected. See [`modules/Roles.md`](./modules/Roles.md) and [`SECURITY.md`](./SECURITY.md). **Still out of scope:** custom roles, multi-role users, full user management (F4 — see L8), and row-level authorization (deferred — see L16). | — | ✅ F3 |
 | L5 | **No encryption at rest.** DB, attachments, backups are plaintext. | PHI exposed to anyone with file access. | F7 |
 | L6 | **Default credentials** `admin`/`admin123`; **no lockout/rate limiting.** | Must be changed manually; brute-forceable. | — |
+| L16 | **No row-level (per-row) authorization.** RBAC (F3) gates by route and action; it does not restrict *which rows* a user may see (all roles with a given permission see the whole clinic's data). | Fine for a single-clinic deployment; the repository layer is the designated future seam (SECURITY.md rule 5), needed for multi-clinic / Patient Portal. | — |
 
 ## Features not yet built
 
 | # | Limitation | Backlog |
 | - | ---------- | ------- |
 | ~~L7~~ | ~~No Settings UI.~~ **Closed (Sprint 4, F2):** `app/modules/settings/` edits clinic-profile fields (name/doctor/address/phone/email/logo) only — see [`modules/Settings.md`](./modules/Settings.md). Database/storage/backup-destination/API-key/RBAC configuration remains unaddressed until a future Administrator surface (F3+F7 first). | ✅ F2 |
-| L8 | **No user-management screen.** | F4 |
+| L8 | **No full user-management screen.** Sprint 5 (F3) added a minimum RBAC administration surface (`/admin/roles`: assign an *existing* user to a role, edit role→permission grants). Creating/deactivating users, resetting credentials, and profile administration remain unbuilt. | F4 |
 | L9 | `exports/` and `logs/` folders are **reserved but unused.** | D3 |
 | L10 | None of the future modules exist: Consultation Workspace, Protocol Engine, OCR, WhatsApp, Printer, Inventory/WHIMS, PillFill, Billing, Analytics, Portal, Telemedicine, AI. | see backlog |
 

@@ -16,10 +16,11 @@ os.environ.setdefault("WISE_PMS_HOME",
 def _dispatch(route, user, pid):
     from unittest.mock import MagicMock
 
-    from app.bootstrap import ROUTES
+    from app.bootstrap import ROUTES, denied_controller
     from app.core.router import Router
     from app.modules.authentication.controller import login_controller
     from app.modules.dashboard.controller import dashboard_controller
+    from app.modules.roles.service import user_has_permission
 
     page = MagicMock()
     page.route = route
@@ -30,7 +31,9 @@ def _dispatch(route, user, pid):
 
     router = Router(page, ROUTES,
                     anonymous_handler=login_controller,
-                    fallback_handler=dashboard_controller)
+                    fallback_handler=dashboard_controller,
+                    has_permission=user_has_permission,
+                    denied_handler=denied_controller)
     router.dispatch()
     return page.views[-1].route if page.views else None
 

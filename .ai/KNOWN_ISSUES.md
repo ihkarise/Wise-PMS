@@ -2,13 +2,18 @@
 
 > Working list for the AI/engineer. Mirror of the user-facing
 > [`../docs/KNOWN_LIMITATIONS.md`](../docs/KNOWN_LIMITATIONS.md) with backlog IDs.
-> **Updated:** 2026-07-20.
+> **Updated:** 2026-09-20 (F3 RBAC closed — Sprint 5, ADR-003).
 
 ## Must-fix foundation (block future modules)
 - **F1 — ✅ Closed (Sprint 0).** DB migration framework delivered:
   `app/core/migrations/` — `schema_version` ledger + ordered, idempotent,
   forward-only runner with rollback; baseline `0001_initial`. (Was Ref: L1)
-- **F3 — No RBAC.** `users.role` decorative; any user can do anything. (L4)
+- **F3 — ✅ Closed (Sprint 5, ADR-003).** RBAC delivered: `roles`/`permissions`/
+  `role_permissions`/`user_roles`, five predefined roles, 16 permissions, one
+  active role per user; enforced at the router **and** the service/action level;
+  authorization resolves via `user_roles → role_permissions → permissions`
+  (`users.role` is now legacy/non-authoritative). `rbac.manage`-gated admin
+  surface at `/admin/roles`; last-Administrator protected. L4 closed. (Was Ref: L4)
 - **F7 — No encryption at rest.** DB/attachments/backups plaintext. (L5)
 - **F2 — No Settings UI.** `settings` table unused; blocks Printer/WhatsApp. (L7)
 

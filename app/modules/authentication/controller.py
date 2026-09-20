@@ -8,5 +8,6 @@ def login_controller(page, params=None, query=""):
 
 
 ROUTES = [
-    (r"^/login$", login_controller),
+    # Public / session-only: no permission required (the login screen itself).
+    (r"^/login$", login_controller, None),
 ]
