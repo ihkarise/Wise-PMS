@@ -60,8 +60,18 @@ derived `BACKUP_KEY` with mandatory domain separation (Recovery Key ≠
 **Design/documentation only — no runtime code, dependency, migration, schema,
 test, or packaging change.** **M1 remains NOT AUTHORIZED** until the §25 gate
 clears (final M0 approval + specialist security sign-off + binding/AEAD/KDF/
-packaging/licensing evidence). Specialist cryptographic review (§24) is still
-**pending**.
+packaging/licensing evidence).
+**Specialist security review — COMPLETE (2026-09-21): ACCEPTABLE WITH
+CONDITIONS, no BLOCKER.** Findings SEC-01…SEC-13 are recorded in M0 §26 with a
+milestone-tiered resolution map (§26.10): SEC-01 (AEAD/library availability),
+SEC-04 (KDF: Recovery Key ≠ KEK_recovery ≠ BACKUP_KEY — HKDF for the
+high-entropy Recovery Key, memory-hard KDF only for passphrases), SEC-05
+(SQLCipher raw-key/profile), SEC-09 (dependency/packaging), SEC-12/13 (HKDF +
+codec verification) must clear **before M1**; SEC-02 (migration atomicity)
+before M5; SEC-07 (nonce/key) before M2/M4; SEC-03/06/08/10 (legacy plaintext
+backups, pagefile residual, DPAPI runbook, Recovery-Key rotation, licensing)
+before production. §27 records the three authorities (PO / specialist /
+implementation evidence); none alone authorizes M1.
 
 ---
 

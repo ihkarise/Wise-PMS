@@ -22,6 +22,14 @@ explicit (§23), the specialist security gate is enumerated as a checklist
 and documentation only** — no cryptographic parameters are fixed, no package
 is pinned, no implementation is authorized. ADR-004 is unchanged (the
 decisions are detailed design, not architecture-level changes).
+**Revision 3 (2026-09-21) — SPECIALIST FINDINGS INCORPORATED:** the completed
+specialist cryptographic/security review (verdict **ACCEPTABLE WITH
+CONDITIONS**, no BLOCKER) is recorded as SEC-01…SEC-13 (§26), the KDF clarity
+is finalized (§26.1: Recovery Key ≠ KEK_recovery ≠ BACKUP_KEY), the M1 gate is
+re-tiered by resolution milestone (§26.10), and the three authorities are made
+explicit (§27). Documentation only — no cryptographic parameter is invented,
+no open implementation detail is selected, no code/dependency/schema/test
+change. **M1 remains NOT AUTHORIZED.**
 
 > **Reading contract — four tiers, kept strictly distinct (do not collapse):**
 > - **[LOCKED]** — Product-Owner-approved architecture (the nine decisions in
@@ -796,11 +804,174 @@ Only when all eight clear does M1 (crypto/key-management foundation) become
 eligible for its own separate Product Owner authorization — it still does not
 begin automatically.
 
+## 26. Specialist Security Review — Conditional Findings
+
+The specialist cryptographic/security review is **complete**. **Verdict:
+SECURITY DESIGN ACCEPTABLE WITH CONDITIONS — no BLOCKER.** The architecture
+(SQLCipher raw-key at the adapter seam; envelope DEK/KEK with HKDF domain
+separation; mandatory offline Recovery Key; authenticated wrapped-DEK records;
+per-file AEAD; independently recoverable encrypted backups; keys-first /
+encrypted-pre-migration-backup ordering) is sound and the threat model does
+not overclaim. The conditions below must be resolved or routed to the correct
+gate before the milestone that implements them. **This section records the
+findings; it does not fix them in code, invent parameters, or select any
+implementation detail the review left open.**
+
+| ID | Severity | Security issue | Design consequence | Required resolution | Milestone/gate | Blocks M1? | External verify? |
+| -- | -------- | -------------- | ------------------ | ------------------- | -------------- | :--------: | :--------------: |
+| SEC-01 | HIGH | XChaCha20-Poly1305 may be unavailable in the pinned crypto library (recent addition) or need PyNaCl (extra native dep) | The approved AEAD direction may not be implementable as-is | Verify exact package/version/API or select a formally reviewed alternative (§26.2) | Before M1 (AEAD gate) | **Yes** | **Yes** |
+| SEC-02 | HIGH | DB file + attachment tree cannot switch in one atomic filesystem op | A crash between the two switches leaves a mixed encrypted/plaintext state | Durable combined migration-phase marker + exclusive/resumable/idempotent recovery (§26.3) | Before M5 | No | Specialist/design |
+| SEC-03 | HIGH | Pre-F7 plaintext `backups/*.zip` survive migration; OS pagefile/hibernation may hold plaintext/keys | Full-PHI plaintext can persist off the encrypted set | Define legacy-backup handling; document pagefile/hibernation residual + recommend OS FDE (§26.4) | Before production | No | Specialist judgment |
+| SEC-04 | MEDIUM | KDF ambiguity between the high-entropy Recovery Key and low-entropy passphrases | Risk of an unnecessary/incorrect KDF on `BACKUP_KEY`/`KEK_recovery` | Fix: HKDF for the Recovery Key paths; memory-hard KDF only for passphrases (§26.1) | Before M1 | **Yes** | Specialist confirm |
+| SEC-05 | MEDIUM | SQLCipher raw-key format/salt/HMAC-key/PRAGMA specifics unpinned | Wrong raw-key handling could weaken/keying-break the DB | Pin format/salt/PRAGMA against the exact binding (§26.5) | Before M3 | **Yes** | **Yes** (SQLCipher) |
+| SEC-06 | MEDIUM | User-scope DPAPI can fail on account change, forced password reset, profile corruption/replacement | KEK_os becomes unusable | Document + operational runbook; Recovery Key is the recovery path (§26.6) | Before production | No | **Yes** (Windows) |
+| SEC-07 | MEDIUM | Nonce/key uniqueness must be enforced per encryption | Nonce reuse (esp. AES-GCM) would break confidentiality | Fresh per-file key / fresh nonce; no reuse; no unsafe in-place re-encrypt (§26.8) | Before M2/M4 | No | Specialist |
+| SEC-08 | MEDIUM | Recovery Key is never stored → a lost printout on a still-unlocked machine cannot be re-shown | Clinics may be stranded without a re-issue path | Authenticated rotate/re-provision flow while the current key is available (§26.7) | Before production/recovery workflow | No | Specialist/operational |
+| SEC-09 | MEDIUM | Native crypto/DB deps change requirements, the dependency gate, and packaging | Layering gate + PyInstaller impact | Approve dependency architecture; pin versions; verify Windows/PyInstaller load; known OpenSSL/SQLCipher versions (§26.9) | Before M1 | **Yes** | **Yes** |
+| SEC-10 | LOW | Bundled native libs carry licensing/NOTICE obligations (Apache-2.0 attribution) | Redistribution compliance | Licensing/NOTICE review; include required notices in the `.exe` | Before production | No | **Yes** (legal) |
+| SEC-11 | INFORMATIONAL | Python cannot guarantee key zeroization; DEK/plaintext in memory while unlocked | Residual consistent with the threat model (running-process not protected) | Document residual; minimize key lifetime | — | No | No |
+| SEC-12 | INFORMATIONAL | HKDF domain separation adequacy | Depends on a uniform Recovery Key + one consistent HKDF construction | Confirm HKDF construction and uniform IKM (§26.1) | Before M1 | No | Specialist confirm |
+| SEC-13 | INFORMATIONAL | SQLCipher codec/temp/journal behavior varies by build | `temp_store`/journal/temp encryption may not hold as assumed | Verify codec-enabled build; journal + temp files encrypted; `temp_store=MEMORY` supported (§26.5) | Before M3 | No | **Yes** (SQLCipher) |
+
+### 26.1 KDF clarification (SEC-04, SEC-12)
+
+- **Recovery Key** — high entropy (≥128-bit CSPRNG). It is **NOT** passed
+  through a memory-hard password KDF. Derivation is **HKDF-based** with
+  explicit domain separation.
+- **`KEK_recovery`** — derived from the Recovery Key using the approved
+  recovery-domain context (`"wise-pms/kek-recovery/v1"`).
+- **`BACKUP_KEY`** — derived **independently** from the *same* Recovery Key
+  using the approved backup-domain context (`"wise-pms/backup/v1"`).
+- Therefore **Recovery Key ≠ KEK_recovery ≠ BACKUP_KEY.** The exact HKDF
+  construction remains subject to specialist verification (SEC-12).
+- **Human passphrase** (operator passphrase, or a dedicated backup passphrase
+  under the not-selected Option B) is a *different* security input: it
+  **requires a memory-hard KDF**. Preferred direction remains **scrypt**;
+  **exact parameters are deferred to specialist review and hardware
+  benchmarking and are not invented here.**
+
+### 26.2 AEAD availability gate (SEC-01)
+
+XChaCha20-Poly1305 remains the Product Owner's **preferred direction**. It is
+**NOT implementation-approved** until the actual pinned library/API is
+verified. The implementation gate must establish: exact package; exact
+version; API availability; Windows support; offline packaging; PyInstaller
+compatibility; native-dependency implications. **If** XChaCha20-Poly1305
+cannot be reliably supported within the approved dependency/packaging
+constraints, a **formally reviewed alternative** must be selected before AEAD
+implementation. **No alternative is selected now.**
+
+### 26.3 Migration atomicity requirement (SEC-02)
+
+The database file and the attachment tree **cannot** be assumed to have a
+single filesystem atomic switch. Migration **MUST** therefore keep a durable
+migration-phase/state marker representing the combined state of: database ·
+attachments · encrypted staging · plaintext source · rollback backup. It must
+recover safely after power loss, process crash, disk-full, partial
+encryption, and interrupted cleanup, and be **exclusive/offline · resumable ·
+idempotent · verifiable.** This is a **design requirement for M5**; the state
+machine and its final schema are **not** implemented or invented here.
+
+### 26.4 Residual plaintext surfaces (SEC-03)
+
+- **Pre-F7 plaintext backups:** existing `backups/*.zip` may remain plaintext
+  after F7 migration unless specifically handled. The migration plan must
+  define how legacy backups are handled. **They are not auto-deleted or
+  converted in this task.**
+- **OS pagefile / hibernation:** decrypted DB pages, plaintext attachment
+  content, and key material may temporarily exist in memory and potentially in
+  OS-managed pagefile/hibernation storage. **F7 does not claim protection
+  against this.** OS-level full-disk encryption is documented as complementary
+  protection. Application-level encryption does **not** eliminate this residual.
+
+### 26.5 SQLCipher raw-key & codec verification gate (SEC-05, SEC-13)
+
+Unresolved until the exact binding/version is verified: raw-key format · key
+encoding · salt handling · SQLCipher key-derivation behavior · HMAC-key
+derivation · PRAGMA compatibility · journal encryption · temporary-file
+encryption · `temp_store=MEMORY` · codec-enabled build. **These are not
+invented here.** **M3 must not begin DB-encryption implementation until the
+exact SQLCipher binding/profile is externally verified.**
+
+### 26.6 DPAPI operational gate (SEC-06)
+
+Windows user-scope DPAPI may fail or become unusable following: a Windows
+account change · forced password-reset scenarios · profile corruption ·
+profile replacement · machine replacement. The **Recovery Key remains the
+recovery mechanism** in every such case. Add this to the operational/recovery
+**runbook** requirements. DPAPI is not implemented here.
+
+### 26.7 Recovery Key operational requirement (SEC-08)
+
+The Recovery Key is **not stored** by the application; if lost, it **cannot be
+redisplayed**. The eventual product must provide an **authenticated
+recovery-key rotation/re-provision flow while the existing key is available**.
+This flow is **not implemented** here, and no cryptographic detail beyond the
+already-approved design is introduced.
+
+### 26.8 Nonce/key requirements (SEC-07)
+
+Every independent encryption operation must have safe nonce/key uniqueness.
+For the preferred per-file-key model: a fresh key per file/object where
+required; a fresh nonce per encryption; **never reuse a `(key, nonce)` pair**;
+never perform unsafe in-place re-encryption; backup encryption must
+independently satisfy nonce uniqueness. **Final wire-format details are not
+selected here.**
+
+### 26.9 Packaging / dependency gate (SEC-09, SEC-10)
+
+F7 will necessarily affect the current dependency/layering gate because native
+crypto/database dependencies are expected. **Before M1 implementation:** the
+dependency architecture must be approved; exact package versions pinned;
+Windows native loading verified; PyInstaller behavior verified; OpenSSL/
+SQLCipher versions known; licensing/NOTICE obligations reviewed.
+**`requirements.txt` is not modified now.**
+
+### 26.10 M1 gate — re-tiered by resolution milestone (SEC → gate)
+
+**Must be resolved BEFORE M1:** SEC-01 (AEAD direction + library availability)
+· SEC-04 (KDF clarification) · SEC-05 (SQLCipher raw-key format/salt/profile)
+· SEC-09 (dependency/layering direction) · SEC-12 (HKDF construction
+confirmation) · SEC-13 (codec/temp/journal verification) · specialist
+confirmation of the complete cryptographic design (§24).
+
+**Can be resolved DURING later implementation milestones:** SEC-02 (migration
+state machine → before M5) · SEC-07 (implementation-level nonce enforcement →
+before M2/M4) · SEC-08 (Recovery Key rotation/re-provision → before the
+production/recovery workflow).
+
+**Must be resolved BEFORE production:** SEC-03 (legacy plaintext-backup
+handling + residual-plaintext documentation) · SEC-06 (DPAPI operational
+runbook) · SEC-10 (licensing/NOTICE).
+
+This re-tiering **augments** the eight §25 prerequisites; it does not relax
+any of them.
+
+## 27. Authority Boundaries
+
+Three distinct authorities govern F7, and **none of them, alone, authorizes
+M1:**
+
+- **Product Owner decisions** define: scope · architecture direction · risk
+  appetite · operational direction.
+- **Specialist security review** defines: cryptographic correctness
+  requirements · security conditions · required verification. (Repository/
+  design review alone does **not** prove cryptographic correctness.)
+- **Implementation evidence** defines: whether the chosen libraries/bindings
+  actually work in the target Windows deployment (clean-machine, offline,
+  PyInstaller, native loading).
+
+M1 becomes eligible only when all three are satisfied for the "before M1"
+items (§25 + §26.10) — and then still requires its own separate Product Owner
+authorization; it does not begin automatically.
+
 ---
 
 **M0 status:** design/documentation complete and internally consistent, with
-the M0-review refinements (HIGH-1/2/3), the resolved recommendations, and the
-**seven recorded Product Owner decisions (§22)** folded in. No runtime code,
-dependency, migration, schema, test, or packaging change. **Product Owner
-decisions: 7/7 recorded. Specialist security review: pending. M1: NOT
-AUTHORIZED** until the §25 gate clears.
+the M0-review refinements (HIGH-1/2/3), the seven recorded Product Owner
+decisions (§22), and the **completed specialist security review (SEC-01…13,
+§26)** folded in. No runtime code, dependency, migration, schema, test, or
+packaging change. **Product Owner decisions: 7/7 recorded. Specialist security
+review: COMPLETE — ACCEPTABLE WITH CONDITIONS (no BLOCKER). M1: NOT
+AUTHORIZED** until the §25 + §26.10 "before M1" conditions clear and M1
+receives its own authorization.
