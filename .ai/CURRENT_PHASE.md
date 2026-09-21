@@ -1,16 +1,49 @@
 # .ai/CURRENT_PHASE.md
 
-**Phase:** Sprint 5 — F3 RBAC (Role-Based Access Control, ADR-003)
-**Status:** ✅ CLOSED — merged to `main` via **PR #14** (merge commit
-`10e0738`, on top of the Sprint 4 base). Milestones M1–M5 implemented and
-security-audited; M6 documentation closure done. `main == origin/main ==
-10e0738`, working tree clean.
-`python3 -m pytest -q` → **130 passing** (0 failed/skipped/errors/warnings);
-layering checks PASS (5); regression golden PASS (1).
-Regression golden changed exactly once across the sprint, intentionally (the
-M1 RBAC tables/index — rule 12/13); no golden change in M2–M5.
-**No implementation work is pending. No next phase is authorized.**
-**Updated:** 2026-09-20 (post-merge synchronization: PR #14 confirmed merged)
+**Phase:** Sprint 6 — F7 Encryption at Rest (ADR-004) — **PLANNING/DESIGN ONLY**
+**Status:** 🟡 PLANNING. The Product Owner has approved the F7 architecture
+**direction** and authorized converting the F7 planning analysis into formal
+design documents — **not** implementation. This planning phase adds
+`docs/architecture-decisions/ADR-004-F7-Encryption-at-Rest.md` and
+`docs/planning/SPRINT6_TECHNICAL_PLAN.md` (plus these `.ai/*` pointers) and
+**nothing else** — no runtime code, no crypto utility, no key store, no
+dependency, no `requirements.txt` change, no migration, no schema change, no
+test/golden change. Implementation (milestones M1–M7) remains **separately
+gated** and unauthorized.
+**Prior phase:** Sprint 5 — F3 RBAC (ADR-003) is ✅ CLOSED, merged to `main`
+via **PR #14** (`10e0738`) and **PR #15** (`cf0f1e5`, docs sync).
+`main == origin/main == cf0f1e5`; `python3 -m pytest -q` → **130 passing**;
+layering PASS (5); regression golden PASS (1).
+**Updated:** 2026-09-21 (Sprint 6 F7 planning: ADR-004 + Sprint 6 technical
+plan authored; design only, implementation not authorized)
+
+## F7 architecture direction — APPROVED (Product Owner, 2026-09-21)
+- **Database:** SQLCipher / transparent full-database encryption at the
+  `SQLiteAdapter` seam (direction only — not installed/implemented).
+- **Key management:** envelope model (DEK wrapped by ≥1 KEK).
+- **Recovery:** mandatory **offline recovery key** — "encryption without a
+  viable recovery path is not acceptable for Wise PMS."
+- **Attachments:** `EncryptedStorageProvider` decorator at the
+  `StorageProvider` seam; viewer/`local_path` redesigned to decrypt-to-temp.
+- **Backups:** independently recoverable encrypted artifact + a designed
+  restore workflow; pre-F7 plaintext backups still restorable.
+- **Migration:** explicit, administrator-controlled, atomic, resumable,
+  verified, idempotent; never silent at startup.
+- **Scope:** database + attachments + backups together.
+- **Dependency:** a crypto runtime dependency approved **in principle** —
+  **not installed, not chosen** here (stdlib has no AEAD cipher).
+- **Security review:** mandatory before F7 is production-ready.
+
+## Still requiring specialist review (the M0 gate)
+Exact cipher · AEAD mode · KDF · KDF parameters · nonce/IV · key wrapping ·
+Windows keystore usage · recovery-key encoding/storage · key rotation ·
+secure-deletion limits · temporary plaintext exposure · exact SQLCipher
+binding · exact crypto library. Marked **[SECURITY DESIGN DECISION
+REQUIRED]** / **[SECURITY REVIEW REQUIRED]** in ADR-004.
+
+---
+
+## (Archived) Sprint 5 — F3 RBAC (ADR-003) — CLOSED
 
 ## Goal
 Make `users.role` **enforced** instead of decorative (close L4 / the
