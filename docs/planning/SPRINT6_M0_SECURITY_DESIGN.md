@@ -7,6 +7,14 @@ with this document.** Detailed security design for
 [`../architecture-decisions/ADR-004-F7-Encryption-at-Rest.md`](../architecture-decisions/ADR-004-F7-Encryption-at-Rest.md)
 and [`SPRINT6_TECHNICAL_PLAN.md`](./SPRINT6_TECHNICAL_PLAN.md).
 **Date:** 2026-09-21
+**Revision 1 (2026-09-21):** M0 review refinements folded in — HIGH-1
+(domain-separate `KEK_recovery` vs `BACKUP_KEY`, §4/§5.2/§8), HIGH-2
+(authenticated wrapped-DEK context binding + rollback resistance, §5.1),
+HIGH-3 (encrypted pre-migration backup, §11) — plus resolved KDF (§4/§5.2),
+backup-key architecture (§8), AEAD recommendation (§4/§7), SQLCipher binding
+acceptance criteria (§6), and the consolidated decision ledger (§21). The
+approved architecture and terminology are unchanged; this revision adds
+precision, it does not rewrite the design.
 
 > **Reading contract — four tiers, kept strictly distinct (do not collapse):**
 > - **[LOCKED]** — Product-Owner-approved architecture (the nine decisions in
@@ -97,12 +105,13 @@ Precise enough that M1 invents nothing. All **[M0-REC] + [SEC-REVIEW]**.
 | **CSPRNG** | `secrets` / `os.urandom` (OS CSPRNG) for all keys, salts, nonces, Recovery Key | Stdlib; no custom RNG |
 | **Symmetric key size** | **256-bit** for DEK, all KEKs, all subkeys | Matches SQLCipher AES-256 |
 | **DB cipher** | SQLCipher 4 default: **AES-256-CBC + per-page HMAC-SHA512** | See §6; keep defaults unless review dictates otherwise |
-| **File/backup AEAD** | **[PO/SEC choice]** AES-256-GCM **or** ChaCha20-Poly1305/XChaCha20-Poly1305 | GCM if hardware-AES present; XChaCha20 removes nonce-reuse fragility (192-bit nonce). Recommend **XChaCha20-Poly1305** for whole-file/backup unless AES-NI + GCM is preferred by review |
+| **File/backup AEAD** | **M0 TECHNICAL RECOMMENDATION — REQUIRES SPECIALIST SECURITY REVIEW:** **XChaCha20-Poly1305** for whole-file attachments and backups; **AES-256-GCM** acceptable if the review prefers hardware-AES and per-file keys are used. See §7 "AEAD decision" for the full comparison | XChaCha20's 192-bit random nonce removes nonce-reuse fragility for streamed/large files; GCM is safe here only because per-file keys bound each key to one message. Final choice is a [PO-DECISION] ratified by [SEC-REVIEW] |
 | **Nonce size** | GCM: **96-bit random**; XChaCha20: **192-bit random**; unique per encryption | Never reuse (key, nonce) |
 | **Auth tag size** | **128-bit** | Full AEAD tag |
-| **Key wrapping** | AEAD wrap: `wrap = AEAD(KEK, nonce, DEK, AAD=context)` **or** RFC 5649 AES-KW | One wrapped-DEK blob per KEK |
-| **Subkey derivation** | **HKDF-SHA-256(DEK, salt, info)** with distinct `info` labels: `"wise-pms/db/v1"`, `"wise-pms/attach/v1"` | Domain separation across CBC/HMAC (SQLCipher) vs. AEAD (files) |
-| **Passphrase/Recovery-Key KDF** | **[PO/SEC choice]** **Argon2id** (memory-hard, preferred; needs `argon2-cffi`) **or** **scrypt** (available via stdlib `hashlib.scrypt` and the crypto lib — ₹0, no extra dep) | KEK derivation only; DB raw-key path bypasses SQLCipher's own PBKDF2 (avoids double KDF) |
+| **Key wrapping (HIGH-2)** | AEAD wrap: `wrap = AEAD(KEK, nonce, DEK, AAD)` **or** RFC 5649 AES-KW. **AAD MUST bind** `{keymat_version, kek_path_id, wrap_format_version}` | One wrapped-DEK record per KEK; the authenticated AAD makes substitution/rollback of an old record detectable (see §5.1) |
+| **Subkey derivation** | **HKDF-SHA-256** with distinct `info` labels: `"wise-pms/db/v1"`, `"wise-pms/attach/v1"` | The DEK is already a uniform 256-bit key, so **HKDF-Expand-only** is sufficient (Extract/salt is for non-uniform inputs); distinct `info` gives domain separation across CBC/HMAC (SQLCipher) vs. AEAD (files) |
+| **KEK-derivation domain separation (HIGH-1)** | Every KEK/backup key derived from a shared secret MUST include a fixed **context label**, not only a salt: `"wise-pms/kek-recovery/v1"` (KEK_recovery) vs `"wise-pms/backup/v1"` (BACKUP_KEY) vs `"wise-pms/kek-pass/v1"` (KEK_pass) | Distinct salts alone do not *guarantee* independence; the context label makes it impossible for two purposes to derive the same/related key even under a salt collision (see §5.2) |
+| **Recovery-Key KDF (STEP 5)** | A full-entropy (≥128-bit CSPRNG) **Recovery Key** needs only **HKDF** (with the §5.2 context) — a memory-hard KDF adds startup cost without security benefit for a uniform key. A **low-entropy human passphrase** (operator passphrase / a dedicated backup passphrase) **requires a memory-hard KDF: Argon2id** (needs `argon2-cffi`) **or scrypt** (stdlib `hashlib.scrypt` / the crypto lib — ₹0) | KEK derivation only; the SQLCipher DB raw-key path bypasses SQLCipher's own PBKDF2 (avoids a double KDF). Exact params are [SEC-REVIEW], benchmarked on clinic hardware |
 | **KDF salt size** | **128-bit random**, stored beside the wrapped blob | Per key-material record |
 | **Argon2id params (start point)** | e.g. memory 256–512 MiB, time 3, parallelism 1–4 | Tune to clinic hardware; startup-latency vs. brute-force trade-off — **measure at M1** |
 | **scrypt params (start point)** | e.g. N=2^17, r=8, p=1 | Same tuning caveat |
@@ -115,9 +124,10 @@ Precise enough that M1 invents nothing. All **[M0-REC] + [SEC-REVIEW]**.
    Windows DPAPI-protected secret          Offline Recovery Key            (optional) operator passphrase
    [persistent, machine+user bound]        [NOT persisted in clear;        [not persisted; entered]
             │                                shown ONCE, stored offline]              │
-     DPAPI unprotect                          KDF(Argon2id/scrypt, salt)      KDF(Argon2id/scrypt, salt)
-            │                                            │                             │
-         KEK_os                                    KEK_recovery                    KEK_pass
+     DPAPI unprotect            HKDF(RecoveryKey, salt,          KDF(passphrase, salt,
+            │                    "wise-pms/kek-recovery/v1")      "wise-pms/kek-pass/v1")
+            │                                │                             │
+         KEK_os                        KEK_recovery                    KEK_pass
             │                                            │                             │
             └─────── each AEAD-wraps the SAME DEK ───────┴─────────────────────────────┘
                                        │  (N wrapped-DEK blobs on disk, one per KEK)
@@ -131,8 +141,14 @@ Precise enough that M1 invents nothing. All **[M0-REC] + [SEC-REVIEW]**.
                               message count per key)
 
    BACKUP (independent branch — NOT DPAPI-bound):
-     Recovery Key (or dedicated backup passphrase) ──KDF(salt)──> BACKUP_KEY ──AEAD──> encrypted backup artifact
+     Recovery Key (or dedicated backup passphrase)
+        ──KDF(salt, "wise-pms/backup/v1")──> BACKUP_KEY ──AEAD──> encrypted backup artifact
 ```
+
+> **Domain separation (HIGH-1):** where `KEK_recovery` and `BACKUP_KEY` derive
+> from the *same* Recovery Key, they use **distinct fixed context labels**
+> (`"wise-pms/kek-recovery/v1"` vs `"wise-pms/backup/v1"`) in addition to
+> distinct salts — see §5.2.
 
 Per-key properties:
 
@@ -165,6 +181,63 @@ Per-key properties:
   new machine. **Backups** move independently because `BACKUP_KEY` derives
   from the Recovery Key/backup passphrase, not DPAPI.
 
+### 5.1 Wrapped-DEK record & rollback resistance (HIGH-2)
+
+Each KEK path wraps the DEK into a **wrapped-DEK record** — one per path. To
+make substitution/rollback of an old record detectable, every record is an
+authenticated structure whose AEAD **AAD binds its own identity**:
+
+```
+wrapped-DEK record =
+  header{ magic, wrap_format_version, keymat_version, kek_path_id }   <- also the AEAD AAD
+  || nonce
+  || AEAD(KEK, nonce, DEK, AAD = header)
+```
+
+- **`keymat_version`** — a monotonically increasing generation for the DEK's
+  key material; bumped on any DEK rotation or KEK-set change.
+- **`kek_path_id`** — which path wrapped this record (`os` / `recovery` /
+  `pass`), so a `recovery` record can't be presented as an `os` record.
+- **`wrap_format_version`** — the wrapping construction version.
+
+Because the AAD is authenticated, altering any of these fields, or swapping a
+record between paths, fails AEAD verification. A separate, authenticated
+**key-material manifest** (listing the current `keymat_version` and the set of
+valid `kek_path_id`s) lets the app reject a record whose `keymat_version` is
+older than the manifest — closing the "restore an old/revoked wrapped-DEK"
+rollback. `[SEC-REVIEW]` ratifies the exact construction and manifest
+integrity mechanism.
+
+Expected behavior by operation:
+
+| Operation | Effect on wrapped-DEK records |
+| --------- | ----------------------------- |
+| **DEK rotation** (compromise) | new DEK → new `keymat_version` → **all** records re-created; data re-encrypted; old records destroyed and rejected by the manifest |
+| **KEK rotation / re-wrap** | DEK unchanged; the affected path's record is re-created under the new KEK; `keymat_version` bumped so the old record is rejected |
+| **Recovery Key replacement** | re-derive `KEK_recovery` from the new key → re-create the `recovery` record; invalidate the old (manifest bump) |
+| **Adding a new machine** | wrap the existing DEK under the new machine's `KEK_os` → add an `os` record (no data re-encryption) |
+| **Removing/revoking a key path** | drop that path's record; bump the manifest so the removed record can't be reinstated |
+| **Restoring old key-material metadata** | rejected: the record's `keymat_version` is older than the manifest → fail closed |
+
+### 5.2 Why KEK_recovery and BACKUP_KEY cannot become interchangeable (HIGH-1)
+
+`KEK_recovery` (wraps the DEK) and `BACKUP_KEY` (encrypts backup artifacts)
+may share the **same** Recovery Key as input. Relying on different *salts*
+alone is insufficient — a salt collision, a salt-handling bug, or reuse of a
+stored salt could make the two derivations coincide. The design therefore
+**requires a fixed, distinct context label per purpose** bound into the KDF
+`info`/context:
+
+- `KEK_recovery = HKDF(RecoveryKey, salt_r, "wise-pms/kek-recovery/v1")`
+- `BACKUP_KEY   = KDF(RecoveryKey_or_backup_passphrase, salt_b, "wise-pms/backup/v1")`
+
+With distinct context labels, the two outputs are cryptographically
+independent **regardless of salt values**, so a key derived for wrapping can
+never be used to decrypt a backup (or vice versa), and a future code path
+cannot accidentally cross-use them. The `/vN` suffix versions the derivation
+so the scheme can evolve without ambiguity. `[SEC-REVIEW]` confirms the label
+set and KDF binding.
+
 ## 6. SQLCipher Database Design
 
 Grounded in SQLCipher 4 documented behavior (§18 sources). All parameter
@@ -184,6 +257,30 @@ choices **[M0-REC] + [SEC-REVIEW]**.
 | Corruption | Per-page HMAC failure raises on read → "database corrupt → restore from backup"; never silent |
 | Wrong key | First statement after `PRAGMA key` raises ("file is not a database") → "unlock failed"; no partial init |
 | Startup ordering | The unlock stage (DEK → DB_KEY) runs **before** `init_db()`/`migrate()` so migrations execute on a keyed connection |
+
+### 6.1 SQLCipher binding — acceptance criteria (STEP 8)
+
+SQLCipher remains the **[LOCKED]** database-encryption architecture. **No
+binding is chosen from memory and none is installed here.** The eventual
+binding must be selected during M1 preparation and confirmed by
+`[SEC-REVIEW]`, and must satisfy **all** of:
+
+1. SQLCipher **4.x**.
+2. A **Windows prebuilt wheel** (no compiler on the clinic machine).
+3. **Static/native dependencies bundled** (SQLCipher + OpenSSL inside the wheel).
+4. **No system SQLCipher/OpenSSL requirement** on the host.
+5. Compatible with the project's supported **Python version**.
+6. **PyInstaller** compatibility (loads from a frozen `WisePMS.exe`).
+7. Fully **offline** operation (no network at run or build time).
+8. A **reproducible version pin** (package + SQLCipher + OpenSSL versions).
+9. **Security/maintenance evidence** (active maintenance, OpenSSL 3.x LTS,
+   advisory history).
+10. A **clean-machine installation + load test** on Windows.
+
+Candidates to *evaluate* against these criteria (not a selection):
+`sqlcipher3-binary`, `rotki/pysqlcipher3` (statically linked SQLCipher 4.x +
+OpenSSL 3.0.x LTS). Final pin is an M1-preparation `[PO-DECISION]` +
+`[SEC-REVIEW]` item.
 
 ## 7. Attachment Encryption Design (`EncryptedStorageProvider`)
 
@@ -207,13 +304,55 @@ Decorator over `LocalDiskStorageProvider`, selected at
 | Decrypt-to-temp strategy | temp file under a per-user, non-world-readable location (e.g. `%LOCALAPPDATA%`-scoped), created for the viewer's lifetime, removed on close/app-exit |
 | **Unavoidable plaintext exposure (documented)** | the decrypt-to-temp window is real, unavoidable for external OS viewers/printers, and best-effort cleanup only; on SSD/journaling FS the temp bytes may persist after deletion — a documented residual limitation, not eliminated |
 
+### 7.1 AEAD decision (STEP 7)
+
+**M0 TECHNICAL RECOMMENDATION — REQUIRES SPECIALIST SECURITY REVIEW.**
+
+| Axis | AES-256-GCM | XChaCha20-Poly1305 |
+| ---- | ----------- | ------------------- |
+| Nonce | 96-bit; **catastrophic on reuse**; safe here only with per-file keys | 192-bit random; reuse risk negligible even across many files |
+| Per-file key strategy | required to stay safe | recommended but not required for safety |
+| Performance (AES-NI) | fastest with hardware AES | fast in software; no AES-NI dependency |
+| Windows HW acceleration | benefits from AES-NI (common but not universal on clinic HW) | consistent without special HW |
+| Implementation maturity | ubiquitous, well-audited | widely available, well-regarded (libsodium/`cryptography`) |
+| Python library support | `cryptography` (`AESGCM`) | `cryptography` (`XChaCha20Poly1305` / ChaCha20Poly1305) |
+| PyInstaller implications | one native wheel (`cryptography`) | same wheel; no extra dependency |
+| Backup streaming suitability | fine with chunked construction + per-chunk nonces | large nonce simplifies chunk/stream nonce management |
+
+**Recommendation:** **XChaCha20-Poly1305** for whole-file attachments and
+backups (its large random nonce removes nonce-management fragility for
+streamed/large data); **AES-256-GCM is acceptable** if the review prefers
+hardware-AES *and* the per-file-key strategy (§7) is used. Either way,
+128-bit tag, unique random nonce per encryption, AAD binding per §7.
+**This is a `[PO-DECISION]` ratified by `[SEC-REVIEW]`; not chosen here.**
+
+### 7.2 Temporary plaintext — residual limitation (STEP 11)
+
+The decrypt-to-temp path for external viewers/printers is an **unavoidable**
+plaintext window. The design bounds it; it does **not** eliminate it:
+
+- **Location:** a per-user, non-world-readable directory (e.g. a
+  `%LOCALAPPDATA%`-scoped app temp folder), never a shared/world temp path.
+- **Permissions:** ACL'd to the current user only.
+- **Lifetime:** created immediately before the viewer/print action; the
+  shortest lifetime that lets the external app open it.
+- **Cleanup:** deleted when the viewer closes and again on application exit;
+  a startup sweep removes any strays from a prior crash.
+- **Crash behavior:** a hard crash may leave a temp plaintext file; the
+  next-launch sweep removes it (best-effort).
+- **Application-exit behavior:** the temp directory is purged on clean exit.
+- **Secure-deletion limitation:** on SSDs/journaling/COW filesystems,
+  deletion does **not** guarantee the bytes are unrecoverable. **No secure-
+  erase guarantee is claimed.** Documented residual; `[SEC-REVIEW]` confirms
+  the handling is as tight as practical.
+
 ## 8. Backup Encryption Design (independently recoverable)
 
 | Item | Design |
 | ---- | ------ |
 | Encrypted backup format | `magic || format_version || alg_id || kdf_id || kdf_salt || kdf_params || nonce || ciphertext || tag` over the built archive |
 | Encryption boundary | encrypt the **whole built archive** (db + attachments zip) at the destination-write step; construction stays a local walk (ADR-002 §5.3) |
-| Backup key strategy | `BACKUP_KEY = KDF(Recovery Key or a dedicated backup passphrase, kdf_salt)`; salt lives in the header |
+| Backup key strategy | `BACKUP_KEY = KDF(Recovery Key or a dedicated backup passphrase, kdf_salt, "wise-pms/backup/v1")`; salt lives in the header. The **context label** (HIGH-1, §5.2) keeps `BACKUP_KEY` cryptographically independent of `KEK_recovery` even when both derive from the same Recovery Key |
 | Relationship to clinic/device keys | **independent of `KEK_os`/DPAPI** — that is what makes a backup portable |
 | Recovery process | new restore workflow: detect plaintext vs. encrypted (pre-F7 compat) → derive BACKUP_KEY → AEAD-verify → decrypt → atomic swap of `data/` + `attachments/` |
 | New-machine portability | restore needs only the backup artifact + the Recovery Key/backup passphrase; **no original-machine keystore** (satisfies decision 5 and the hard rule) |
@@ -222,6 +361,36 @@ Decorator over `LocalDiskStorageProvider`, selected at
 | Format versioning | `format_version` in the header; restore branches on it |
 | Restore verification | after decrypt, verify archive integrity + DB opens with its key + row/schema sanity before the atomic swap |
 | Backward compatibility | pre-F7 plaintext `backup_*.zip` remain restorable — the restore path detects and handles them |
+
+### 8.1 Backup key architecture — Product Owner decision (STEP 6)
+
+A genuine `[PO-DECISION]`. Both options keep backups **independently
+recoverable** (never dependent on the origin machine's DPAPI).
+
+**Option A — Recovery-Key-derived backup key** (`BACKUP_KEY` from the
+Recovery Key, §5.2 label).
+- *Security:* one high-value secret governs both live recovery and backups →
+  **larger blast radius** (a leaked Recovery Key decrypts every backup too).
+- *Operational:* **one** offline credential to generate, store, and protect.
+- *Recovery:* simplest disaster recovery — the same Recovery Key restores a
+  backup on any machine; nothing extra to lose.
+
+**Option B — Dedicated backup credential** (a separate backup passphrase/key).
+- *Security:* **separation of blast radius** — compromising the live-system
+  Recovery Key does not compromise backups, and vice versa.
+- *Operational:* a **second** credential to manage and not lose; low-entropy
+  passphrases require a memory-hard KDF (§4/STEP 5).
+- *Recovery:* restoring a backup needs the dedicated backup secret, an added
+  step/credential during disaster recovery.
+
+**M0 recommendation:** **Option A** for a single-clinician offline desktop —
+it minimizes the number of offline secrets the clinic must not lose (the
+dominant real-world failure mode, F7-R2), while the §5.2 domain separation
+already prevents cross-use of the derived keys. **Option B** is the right
+choice if the Product Owner wants backup exposure isolated from live-system
+recovery (e.g. backups leave the premises). **Exact decision required from
+the Product Owner:** *choose Option A (shared Recovery Key) or Option B
+(dedicated backup credential).* Not chosen here.
 
 ## 9. Windows Key Protection
 
@@ -237,6 +406,17 @@ Decorator over `LocalDiskStorageProvider`, selected at
 | Permissions | key-material files ACL'd to the user; least privilege **[SEC-REVIEW]** |
 | Failure behavior | any DPAPI failure → **locked state + Recovery-Key prompt**; **no plaintext fallback** |
 | Non-Windows fallback | **[PO-DECISION]** dev/CI/Linux path (e.g. Recovery-Key/passphrase-only, or an OS-keyring abstraction). F7 targets Windows desktop; the fallback must at least keep tests runnable without DPAPI |
+
+> **What DPAPI does and does not protect (STEP 9).** DPAPI protects the
+> `KEK_os` secret **at rest** — it is decryptable only under the same Windows
+> user (user-scope) / machine (machine-scope), so a stolen disk or a copied
+> app-data folder cannot unwrap it. **DPAPI does NOT protect against a
+> compromised process running under the same Windows identity:** any code
+> running as that user can call `CryptUnprotectData`, and while the app is
+> unlocked the DEK is in memory. This is consistent with the threat model
+> (§13): running-process compromise and a compromised, logged-in account are
+> **not** protected by F7. The Recovery Key path always bypasses DPAPI for
+> at-rest recovery; DPAPI is a convenience KEK, never the only unwrap path.
 
 ## 10. Offline Recovery Key
 
@@ -255,24 +435,62 @@ Decorator over `LocalDiskStorageProvider`, selected at
 | Lost-key scenario | if **all** unwrap paths are lost (Recovery Key lost **and** DPAPI unavailable) the data is unrecoverable — the fundamental reason the Recovery Key must be stored offline and backups kept; documented starkly |
 | Compromised-key scenario | treat as key compromise: rotate DEK (full re-encrypt) + issue a new Recovery Key; a leaked Recovery Key can decrypt any backup encrypted under it |
 
+> **Is the Recovery Key ever stored digitally (STEP 10)?** **Not by the
+> application in cleartext.** The app generates it (≥128-bit CSPRNG), shows it
+> **once** for transcription, and may offer a user-initiated export to a file
+> the operator then moves to offline storage — but the app never writes it to
+> its own data directory, logs, or config, and never keeps it after
+> provisioning. Only KDF **salts** and the authenticated wrapped-DEK records
+> (§5.1) persist; the Recovery Key itself lives only offline in the operator's
+> custody. Revocation/re-wrapping and rotation follow §5.1 (bump
+> `keymat_version`, re-create the `recovery` record, reject the old).
+> `[SEC-REVIEW]` confirms entropy, encoding, checksum, and the no-persistence
+> guarantee.
+
 ## 11. Existing-Data Migration
 
-`plaintext → encrypted staging → verification → atomic switch → cleanup`.
-**[LOCKED]** shape; mechanics **[M0-REC]**.
+**[LOCKED]** shape; mechanics **[M0-REC]**. **Required order (HIGH-3) — the
+rollback safety net is an *encrypted* backup, never a plaintext one:**
+
+```
+1. Provision encryption keys (DEK + KEK paths + Recovery Key)
+        ↓
+2. Create an ENCRYPTED pre-migration backup (BACKUP_KEY over the current
+   still-plaintext data, via the §8 backup path)
+        ↓
+3. Verify that encrypted backup (AEAD-verify + test-restore integrity)
+        ↓
+4. Encrypt/stage the database (sqlcipher_export) and attachments to NEW files
+        ↓
+5. Verify the encrypted result (decrypt-and-compare / AEAD-verify + DB opens
+   with its key + row/schema checks)
+        ↓
+6. Atomic switch (swap encrypted DB + attachments into place)
+        ↓
+7. Retain the encrypted rollback backup per policy
+        ↓
+8. Clean up plaintext material as far as technically possible
+```
+
+Because keys are provisioned first (step 1), the pre-migration backup at step
+2 is **already encrypted** — there is **no full-PHI plaintext backup** acting
+as the rollback mechanism. The only plaintext that exists during migration is
+the original live data being converted (step 4 reads it), which is removed at
+step 8.
 
 | Concern | Design |
 | ------- | ------ |
 | Administrator authorization | operator-initiated, RBAC-gated (Administrator); never automatic at startup |
-| Pre-migration backup | mandatory full backup first; retained until the migration verifies |
+| Pre-migration backup (HIGH-3) | mandatory **encrypted** backup first (keys provisioned in step 1); verified; retained as the encrypted rollback net. **The rollback mechanism is never a plaintext backup.** |
 | Disk-space requirement | pre-flight check for ~2× peak (old + new coexist); abort with a clear message if insufficient |
 | Staging | encrypt DB via `sqlcipher_export` to a new encrypted file; encrypt each attachment to a new object; never mutate originals in place |
 | Interruption | a per-item progress ledger records completed items; a crash leaves either the intact plaintext set or a verified encrypted set, never an unusable mix |
 | Resume | re-run continues from the ledger |
 | Verification | decrypt-and-compare / AEAD-verify + DB opens with key + row/schema checks before switching |
 | Idempotency | detect an already-encrypted state and no-op; **never double-encrypt** |
-| Rollback | on failure, restore from the mandatory pre-migration backup |
-| Cleanup | after verified switch, remove plaintext originals; the transient plaintext backup is itself sensitive — encrypt it or securely remove it |
-| Plaintext-remnant limitations | secure deletion is not guaranteed on SSD/journaling/COW filesystems — documented residual; recommend the operator also encrypt/retain the pre-migration backup securely |
+| Rollback | on failure, restore from the **encrypted** pre-migration backup (step 2/7) |
+| Cleanup | after verified switch, remove plaintext originals; there is no plaintext backup to dispose of (step 2 is encrypted) |
+| Plaintext-remnant limitations | secure deletion of the original plaintext data is **not** guaranteed on SSD/journaling/COW filesystems — documented residual, no secure-erase guarantee claimed; the encrypted rollback backup means recovery never depends on those remnants |
 
 ## 12. Startup / Locked-State Machine
 
@@ -429,28 +647,57 @@ admin-controlled/atomic/resumable/verified/idempotent migration · Windows
 packaging accepted · crypto dependency allowed when required · mandatory
 security review. Not reopened here.
 
-## 21. OPEN Decisions
+## 21. Decision Ledger (five tiers — STEP 12)
 
-**[PO-DECISION] — need Product Owner approval:**
-- exact crypto **dependency/binding** to adopt (and accepting the
-  intentional `{flet,bcrypt}` gate change)
-- **AEAD** family (AES-256-GCM vs. XChaCha20-Poly1305)
-- **KDF** (Argon2id — adds `argon2-cffi` — vs. scrypt — no extra dep)
-- **DPAPI scope** (user vs. machine) and the **non-Windows fallback**
-- **journal mode** (WAL vs. rollback) under encryption
-- whether a **committed PyInstaller spec** lands in F7
-- backup key source (Recovery Key vs. a **dedicated backup passphrase**)
+### 21.1 LOCKED (Product-Owner-approved architecture — §20)
+The nine decisions of §3. Not reopened.
 
-**[SEC-REVIEW] — need specialist validation:** every §18 item (parameters,
-constructions, nonce strategy, key lifecycle, migration security, temp
-handling).
+### 21.2 M0 RECOMMENDATIONS (still require specialist confirmation)
+Proposals; not approved decisions until the matching [PO-DECISION] /
+[SEC-REVIEW] gate clears:
+- **AEAD:** XChaCha20-Poly1305 (GCM acceptable with per-file keys) — §7.1.
+- **Backup key architecture:** Option A (Recovery-Key-derived) for a single
+  clinician — §8.1.
+- **KDF split:** HKDF for the high-entropy Recovery Key; Argon2id/scrypt for
+  any low-entropy human passphrase — §4/STEP 5.
+- **SQLCipher profile:** keep the version-4 defaults; `temp_store=MEMORY`; add
+  the §6.1 binding acceptance criteria — §6.
+- **Design requirements HIGH-1/2/3** (now folded into §4/§5.1/§5.2/§8/§11):
+  KEK/backup domain-separation labels; authenticated wrapped-DEK context +
+  rollback resistance; encrypted pre-migration backup. These are **design
+  requirements** to be ratified by [SEC-REVIEW], not open questions.
 
-**[M0-REC] — technical recommendations herein** are proposals only and do
-**not** become approved decisions until the corresponding [PO-DECISION] /
-[SEC-REVIEW] gate clears.
+### 21.3 PRODUCT OWNER DECISIONS (explicit choice required before M1)
+- Exact crypto **dependency/binding** (accepting the intentional
+  `{flet,bcrypt}` layering-gate change) — against §6.1 criteria.
+- **AEAD family** (ratify XChaCha20-Poly1305 vs. AES-256-GCM) — §7.1.
+- **KDF** for passphrases (Argon2id — adds `argon2-cffi` — vs. scrypt — no
+  extra dep) — §4.
+- **DPAPI scope** (user vs. machine) and the **non-Windows fallback** — §9.
+- **Journal mode** (rollback — recommended — vs. WAL) — §6.
+- **Backup key architecture** (Option A vs. Option B) — §8.1.
+- Whether a **committed PyInstaller spec** lands within F7 — §15.
+
+### 21.4 SPECIALIST SECURITY DECISIONS (cryptographic/security review)
+Every §18 item: AEAD/mode + nonce strategy · KDF + parameters · key-wrap
+construction and its authenticated AAD (HIGH-2) · KEK/backup domain-separation
+labels (HIGH-1) · HKDF labels · SQLCipher profile/PRAGMAs/WAL · DPAPI
+usage/permissions + fallback · Recovery-Key entropy/encoding/checksum + the
+no-digital-persistence guarantee · in-memory key lifetime/zeroization ·
+migration security incl. the encrypted-pre-migration-backup ordering (HIGH-3)
+· temporary-plaintext handling · the exact binding pin + bundled
+SQLCipher/OpenSSL versions. **Repository review alone does NOT prove
+cryptographic correctness.**
+
+### 21.5 M1 PREREQUISITES (§19)
+The five gates in §19 must all be satisfied — PO approval of this design,
+specialist sign-off of §18/§21.4, PO resolution of §21.3, a pinned/verified
+Windows static wheel, and pre-approval of the intentional dependency/layering
+gate changes — before M1 begins.
 
 ---
 
-**M0 status:** design/documentation complete and internally consistent; no
-runtime code, dependency, migration, schema, test, or packaging change.
+**M0 status:** design/documentation complete and internally consistent, with
+the M0-review refinements (HIGH-1/2/3) and resolved recommendations folded in;
+no runtime code, dependency, migration, schema, test, or packaging change.
 Awaiting Product Owner approval and specialist security review before M1.
