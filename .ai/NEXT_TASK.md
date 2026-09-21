@@ -21,15 +21,23 @@ dependency, no `requirements.txt` change, no schema/migration, no
 bootstrap/auth/RBAC change, no PyInstaller change, no test change, no
 regression-golden change.
 
+## M0 closure
+The **seven Product Owner decisions are recorded** in M0 §22 (SQLCipher
+static-wheel approach; AEAD = XChaCha20-Poly1305 direction; HKDF for Recovery
+Key / scrypt for passphrases; user-scope DPAPI; rollback journal; Recovery-Key-
+derived `BACKUP_KEY` with mandatory domain separation, Recovery Key ≠
+`BACKUP_KEY`; commit a PyInstaller `.spec` at M3/M7). None fixes a crypto
+parameter, pins a package, or authorizes implementation.
+
 ## Blocked on
-**Product Owner review of the M0 design PR** and **specialist security
-review** (approved decision 9) of the §18 items — both required before M1.
-Several **[PO-DECISION]** items remain open (exact binding, AEAD family, KDF,
-DPAPI scope, journal mode, backup key source — see M0 §21). No implementation
-task is in flight; no code changes are pending.
+**Specialist cryptographic security review** (M0 §24 checklist — pending) and
+final Product Owner approval of the M0 design PR (#17). No implementation task
+is in flight; no code changes are pending.
 
 ## Next
-After M0 approval + specialist sign-off + the open [PO-DECISION] resolutions,
-the first implementation action is **M1 — crypto/key-management foundation**
-(still separately gated; does not begin automatically). M0 §19 lists the M1
-prerequisites.
+**M1 remains NOT AUTHORIZED.** It becomes eligible only after the eight M0 §25
+prerequisites all clear (final M0 approval, specialist sign-off, verified
+SQLCipher binding + Windows/offline/PyInstaller evidence, AEAD API
+availability, benchmarked KDF params, dependency/layering-gate approval,
+licensing review) — and then still requires its own separate Product Owner
+authorization; it does not begin automatically.

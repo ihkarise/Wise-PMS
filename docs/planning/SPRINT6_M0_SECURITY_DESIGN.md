@@ -15,6 +15,13 @@ backup-key architecture (§8), AEAD recommendation (§4/§7), SQLCipher binding
 acceptance criteria (§6), and the consolidated decision ledger (§21). The
 approved architecture and terminology are unchanged; this revision adds
 precision, it does not rewrite the design.
+**Revision 2 (2026-09-21) — M0 CLOSURE:** the seven Product Owner decisions
+are recorded (§22), the Recovery Key ≠ BACKUP_KEY clarification is made
+explicit (§23), the specialist security gate is enumerated as a checklist
+(§24), and the M1 prerequisites are finalized (§25). These are **directions
+and documentation only** — no cryptographic parameters are fixed, no package
+is pinned, no implementation is authorized. ADR-004 is unchanged (the
+decisions are detailed design, not architecture-level changes).
 
 > **Reading contract — four tiers, kept strictly distinct (do not collapse):**
 > - **[LOCKED]** — Product-Owner-approved architecture (the nine decisions in
@@ -697,7 +704,103 @@ gate changes — before M1 begins.
 
 ---
 
+## 22. Product Owner Decisions — F7 M0
+
+Recorded verbatim from the Product Owner's M0 closure. Each is a **direction**;
+none authorizes implementation, fixes a cryptographic parameter, or pins a
+package. Columns: **PO direction** · **Specialist review required** ·
+**Implementation evidence required** · **Blocks M1?**
+
+| # | Decision | PO architecture direction | Specialist security review required | Implementation evidence required | Blocks M1? |
+| - | -------- | ------------------------- | ----------------------------------- | -------------------------------- | :--------: |
+| 1 | **SQLCipher binding** | APPROVED: statically linked / prebuilt **SQLCipher 4.x + OpenSSL 3.x** wheel approach. **Do NOT select/pin the final package** until the M1 evidence gate is met | SQLCipher cipher profile, raw-key handling, PRAGMAs; bundled SQLCipher/OpenSSL versions | Clean-Windows install, offline run, PyInstaller load, reproducible pin, DB-API compatibility, licensing/redistribution (§6.1) | **Yes** |
+| 2 | **Attachment & backup AEAD** | APPROVED DIRECTION: **XChaCha20-Poly1305** (architecture direction only) | Exact API/version, nonce construction & uniqueness, AAD, tag verification, whole-file vs chunked/streamed design | `cryptography` version/API availability for the chosen AEAD | **Yes** |
+| 3 | **KDF** | APPROVED: high-entropy **Recovery Key → HKDF**; human passphrases → **memory-hard KDF, scrypt preferred** over adding `argon2-cffi` (dependency minimization) | KDF choice confirmation; **exact scrypt parameters** | Parameters selected after specialist review **and benchmarked on representative clinic hardware** | **Yes** |
+| 4 | **Windows DPAPI** | APPROVED: **user-scope** DPAPI for `KEK_os` only; Recovery Key remains the mandatory offline recovery; DPAPI is **not** protection against a compromised same-Windows-identity process | DPAPI usage/permissions; the non-Windows dev/CI fallback | Non-Windows fallback explicitly designed & reviewed before implementation | **Yes** |
+| 5 | **SQLite journal mode** | APPROVED: **retain rollback journal**; do NOT migrate to WAL (selected F7 direction for the single-clinician offline architecture) | Confirm side-file (journal) encryption under SQLCipher | — | **No** (selected default) |
+| 6 | **Backup key architecture** | APPROVED: **Recovery-Key-derived `BACKUP_KEY`** — but the Recovery Key **MUST NOT** be reused directly as `BACKUP_KEY`; use explicit domain separation / independent derivation context (preserve the §5.2 requirement) | The exact derivation construction | — | **Yes** |
+| 7 | **PyInstaller** | APPROVED: commit a **reproducible `.spec`** as part of F7, introduced at the implementation milestone when native SQLCipher/crypto deps are known (M3/M7). **Do NOT create it during M0 closure** | Native-library loading behavior | Clean-Windows native-crypto load evidence (at M3/M7) | **No** (M3/M7; not now) |
+
+**Cross-references:** Decision 1 → §6/§6.1; 2 → §4/§7.1; 3 → §4/§5.2/STEP 5;
+4 → §9; 5 → §6; 6 → §5.2/§8/§8.1/§23; 7 → §15.
+
+## 23. Backup-key clarification — Recovery Key ≠ BACKUP_KEY
+
+**Explicit, non-negotiable per the PO decision (§22 #6):**
+
+- The **Recovery Key** is the high-entropy root recovery secret (§10); it is
+  never persisted digitally in cleartext and is held offline by the operator.
+- **`BACKUP_KEY` is NOT the Recovery Key** and is **never** the Recovery Key
+  used directly. It is **independently derived** from the Recovery Key through
+  the KDF with a **distinct domain-separation context**
+  (`"wise-pms/backup/v1"`, §5.2) and its own salt.
+- This preserves the previously approved domain separation between
+  recovery-KEK material (`"wise-pms/kek-recovery/v1"`) and backup-key material
+  (`"wise-pms/backup/v1"`) so the two derived keys are cryptographically
+  independent even though they share one root secret (§5.2 rationale, §5.1
+  wrapped-DEK binding).
+- **The exact derivation construction (KDF choice, ordering, encoding) remains
+  subject to specialist cryptographic review (§24).** This document does not
+  invent the final construction beyond the approved domain-separation
+  requirement.
+
+## 24. Specialist Security Gate — mandatory review checklist
+
+Every item below must be reviewed and signed off by a cryptography/security
+specialist **before implementation approval**. A Product Owner architecture
+decision does **not** substitute for this review. Repository/design review
+alone does **not** prove cryptographic correctness.
+
+- [ ] XChaCha20-Poly1305 API/version (availability in the chosen crypto library)
+- [ ] Nonce generation and uniqueness (per-encryption, CSPRNG)
+- [ ] AAD design (fields bound; tamper/relocation resistance)
+- [ ] Authentication tag verification (fail-closed on mismatch)
+- [ ] Whole-file vs chunked/streamed encryption (large attachments/backups)
+- [ ] scrypt parameters (N, r, p) — benchmarked on clinic hardware
+- [ ] HKDF labels (domain-separation `info` values)
+- [ ] Key wrapping construction (AEAD-wrap / AES-KW)
+- [ ] Wrapped-key AAD ({keymat_version, kek_path_id, wrap_format_version}, §5.1)
+- [ ] Domain separation (`KEK_recovery` vs `BACKUP_KEY`, §5.2/§23)
+- [ ] SQLCipher profile and PRAGMAs (`key`, `foreign_keys`, `temp_store`, memory security)
+- [ ] SQLCipher raw-key handling (`DB_KEY` hex raw key; no passphrase-PBKDF2 double KDF)
+- [ ] DPAPI user-scope behavior (protection boundary; permissions)
+- [ ] Recovery Key entropy and encoding (≥128-bit; checksum)
+- [ ] Recovery Key non-persistence (never stored digitally in cleartext)
+- [ ] In-memory key lifetime (minimization; best-effort wipe limits in Python)
+- [ ] Temporary plaintext handling (viewer decrypt-to-temp; location/lifetime/cleanup)
+- [ ] Migration ordering (keys → encrypted backup → stage → verify → switch, §11)
+- [ ] Encrypted pre-migration backup (rollback net is never plaintext, HIGH-3)
+- [ ] Secure deletion limitations (no guarantee on SSD/journaling/COW FS)
+- [ ] Bundled SQLCipher/OpenSSL versions (pin + advisory review)
+- [ ] PyInstaller native-library loading (frozen `.exe`, offline)
+
+## 25. M1 Prerequisites (closure — supersedes/confirms §19)
+
+**M1 remains NOT AUTHORIZED until ALL of the following are satisfied:**
+
+1. Final M0 documentation is approved by the Product Owner.
+2. Specialist security review is completed and signs off on the cryptographic
+   design (the §24 checklist).
+3. The SQLCipher binding candidate is verified against the required criteria
+   (§6.1).
+4. Windows clean-machine / offline / PyInstaller-loading evidence exists.
+5. AEAD implementation/API availability (XChaCha20-Poly1305) is verified.
+6. KDF parameters are selected after specialist review and hardware
+   benchmarking (§22 #3).
+7. Dependency/layering-gate impact is explicitly reviewed and approved
+   (the intentional `{flet,bcrypt}` gate + `test_layering.py` allow-list change).
+8. Any required licensing/redistribution review is completed (bundled native
+   libraries).
+
+Only when all eight clear does M1 (crypto/key-management foundation) become
+eligible for its own separate Product Owner authorization — it still does not
+begin automatically.
+
+---
+
 **M0 status:** design/documentation complete and internally consistent, with
-the M0-review refinements (HIGH-1/2/3) and resolved recommendations folded in;
-no runtime code, dependency, migration, schema, test, or packaging change.
-Awaiting Product Owner approval and specialist security review before M1.
+the M0-review refinements (HIGH-1/2/3), the resolved recommendations, and the
+**seven recorded Product Owner decisions (§22)** folded in. No runtime code,
+dependency, migration, schema, test, or packaging change. **Product Owner
+decisions: 7/7 recorded. Specialist security review: pending. M1: NOT
+AUTHORIZED** until the §25 gate clears.
