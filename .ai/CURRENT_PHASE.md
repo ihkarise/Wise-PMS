@@ -41,6 +41,20 @@ secure-deletion limits · temporary plaintext exposure · exact SQLCipher
 binding · exact crypto library. Marked **[SECURITY DESIGN DECISION
 REQUIRED]** / **[SECURITY REVIEW REQUIRED]** in ADR-004.
 
+## M0 Security Design Review — authored (2026-09-21), awaiting approval
+The detailed security design is in
+[`../docs/planning/SPRINT6_M0_SECURITY_DESIGN.md`](../docs/planning/SPRINT6_M0_SECURITY_DESIGN.md):
+crypto-primitive design, the DEK/KEK envelope key hierarchy, SQLCipher
+database design (raw-key open, `temp_store=MEMORY`), `EncryptedStorageProvider`
+attachment design, independently-recoverable backup design, Windows DPAPI key
+protection, the offline Recovery Key, existing-data migration, the
+startup/locked-state machine, threat model, performance/packaging
+requirements, the M1–M7 security test matrix, and an explicit LOCKED-vs-OPEN
+decision split. **Design/documentation only — no runtime code, dependency,
+migration, schema, test, or packaging change.** Awaiting Product Owner
+approval **and** specialist security review before M1; open **[PO-DECISION]**
+items remain (M0 §21).
+
 ---
 
 ## (Archived) Sprint 5 — F3 RBAC (ADR-003) — CLOSED

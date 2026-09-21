@@ -4,35 +4,32 @@
 > one. **Updated:** 2026-09-21.
 
 ## Now
-**Sprint 6 (F7 Encryption at Rest, ADR-004) — PLANNING/DESIGN ONLY.** The
-Product Owner has approved the F7 architecture direction and authorized
-converting the F7 planning analysis into formal design documents. This
-planning task creates **only**:
-- [x] `docs/architecture-decisions/ADR-004-F7-Encryption-at-Rest.md`
-- [x] `docs/planning/SPRINT6_TECHNICAL_PLAN.md`
-- [x] `.ai/CURRENT_PHASE.md`, `.ai/NEXT_PHASE.md`, `.ai/NEXT_TASK.md`
-  (planning-state pointers only)
+**Sprint 6 (F7 Encryption at Rest) — M0 Security Design Review, DESIGN ONLY.**
+F7 planning (ADR-004 + Sprint 6 technical plan) is merged to `main` via
+**PR #16** (`d534487`). The Product Owner has authorized **M0** (turn the
+approved F7 architecture into an implementation-ready security design). This
+task creates **only**:
+- [x] `docs/planning/SPRINT6_M0_SECURITY_DESIGN.md` (detailed security design:
+  crypto primitives, key hierarchy, SQLCipher, attachment/backup encryption,
+  Windows DPAPI, offline Recovery Key, migration, locked-state machine,
+  threat model, test matrix, LOCKED vs OPEN decisions)
+- [x] `.ai/CURRENT_PHASE.md`, `.ai/NEXT_TASK.md` (M0-status pointers)
 
 **Nothing else changes:** no `app/` runtime code, no crypto utility, no key
 store, no `EncryptedStorageProvider`, no restore/migration code, no new
 dependency, no `requirements.txt` change, no schema/migration, no
 bootstrap/auth/RBAC change, no PyInstaller change, no test change, no
-regression-golden change. This mirrors the Sprint 5 planning-PR precedent
-(`SPRINT5_FILE_MAP.md §5`: ADR + planning docs + the three `.ai` pointers
-only).
+regression-golden change.
 
 ## Blocked on
-**Product Owner review and merge authorization for the F7 planning PR**, and
-— separately — explicit authorization to begin F7 **implementation**
-(milestones M1–M7). No implementation task is in flight; no code changes are
-pending. Prior release (Sprint 5) is done (`main == cf0f1e5`).
+**Product Owner review of the M0 design PR** and **specialist security
+review** (approved decision 9) of the §18 items — both required before M1.
+Several **[PO-DECISION]** items remain open (exact binding, AEAD family, KDF,
+DPAPI scope, journal mode, backup key source — see M0 §21). No implementation
+task is in flight; no code changes are pending.
 
 ## Next
-After the planning PR merges, the first implementation action would be **M0
-— Architecture/security decision closure** (resolve every [SECURITY DESIGN
-DECISION REQUIRED] item in ADR-004 §13/§20; select the crypto
-dependency/SQLCipher binding; engage specialist security review; confirm the
-milestone order). **M0 requires its own Product Owner authorization** — it
-does not begin automatically. Prior candidate follow-ons (F4 user management;
-Consultation Workspace feeders; AI Gateway, blocked until F7) remain per the
-backlog.
+After M0 approval + specialist sign-off + the open [PO-DECISION] resolutions,
+the first implementation action is **M1 — crypto/key-management foundation**
+(still separately gated; does not begin automatically). M0 §19 lists the M1
+prerequisites.
