@@ -41,6 +41,28 @@ secure-deletion limits · temporary plaintext exposure · exact SQLCipher
 binding · exact crypto library. Marked **[SECURITY DESIGN DECISION
 REQUIRED]** / **[SECURITY REVIEW REQUIRED]** in ADR-004.
 
+## M0 Security Design Review — CLOSURE recorded (2026-09-21)
+The detailed security design is in
+[`../docs/planning/SPRINT6_M0_SECURITY_DESIGN.md`](../docs/planning/SPRINT6_M0_SECURITY_DESIGN.md):
+crypto-primitive design, the DEK/KEK envelope key hierarchy, SQLCipher
+database design (raw-key open, `temp_store=MEMORY`), `EncryptedStorageProvider`
+attachment design, independently-recoverable backup design, Windows DPAPI key
+protection, the offline Recovery Key, existing-data migration, the
+startup/locked-state machine, threat model, performance/packaging
+requirements, the M1–M7 security test matrix, and the LOCKED-vs-OPEN split.
+**M0 CLOSURE (§22):** the seven Product Owner decisions are recorded —
+(1) static-wheel SQLCipher 4.x + OpenSSL 3.x (no final pin until the evidence
+gate), (2) AEAD direction XChaCha20-Poly1305, (3) HKDF for the Recovery Key /
+scrypt for passphrases (params deferred to specialist review + benchmark),
+(4) user-scope Windows DPAPI, (5) retain rollback journal, (6) Recovery-Key-
+derived `BACKUP_KEY` with mandatory domain separation (Recovery Key ≠
+`BACKUP_KEY`, §23), (7) commit a reproducible PyInstaller `.spec` at M3/M7.
+**Design/documentation only — no runtime code, dependency, migration, schema,
+test, or packaging change.** **M1 remains NOT AUTHORIZED** until the §25 gate
+clears (final M0 approval + specialist security sign-off + binding/AEAD/KDF/
+packaging/licensing evidence). Specialist cryptographic review (§24) is still
+**pending**.
+
 ---
 
 ## (Archived) Sprint 5 — F3 RBAC (ADR-003) — CLOSED
