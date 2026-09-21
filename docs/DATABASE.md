@@ -2,7 +2,9 @@
 
 > Source of truth for the schema is the migration set under
 > `app/core/migrations/` (baseline: `v0001_initial.py`). This document mirrors it
-> and records conventions. **Last updated:** 2026-07-20.
+> and records conventions. **Last updated:** 2026-09-20 (RBAC tables `roles`/
+> `permissions`/`role_permissions`/`user_roles` documented — Sprint 5 / F3,
+> migration `v0003_rbac`).
 
 ## Engine & conventions
 
@@ -41,7 +43,7 @@ sqlite_adapter.py` and the pre-existing `app/core/migrations/` package
 (unchanged, out of scope) may import `sqlite3` directly
 (`tests/test_layering.py`).
 
-## Tables (9 domain + 1 internal)
+## Tables (13 domain + 1 internal)
 
 > **Sprint 2 (`v0002_consultations`):** `consultations` — the clinical *document*,
 > 1:1 with a `visits` row (the *event*). Columns: `id`, `visit_id`
@@ -50,13 +52,20 @@ sqlite_adapter.py` and the pre-existing `app/core/migrations/` package
 > `remarks`, `status` (`draft|in_progress|completed|amended|locked`, default
 > `draft`), `created_at`, `updated_at`. FKs → `visits`/`patients`/`patient_cases`.
 > Additive + reversible; `visits` unchanged (ADR-001 / ADR-0009).
+>
+> **Sprint 5 (`v0003_rbac`, F3 / ADR-003):** the four RBAC tables `roles`,
+> `permissions`, `role_permissions`, `user_roles` (documented in full under
+> "RBAC tables" below). Additive + reversible; existing tables unchanged.
 
-The 8 domain tables below plus one internal bookkeeping table, `schema_version`
-(`version` PK · `name` · `applied_at`), which records every applied migration.
+The 8 core domain tables and 4 RBAC tables below, plus one internal
+bookkeeping table, `schema_version` (`version` PK · `name` · `applied_at`),
+which records every applied migration.
 
 ### users
 `id` PK · `username` UK · `password_hash` (bcrypt) · `full_name` · `role`
-(free text today — RBAC not yet enforced) · `is_active` · `created_at`.
+(legacy free-text column, **non-authoritative** since Sprint 5 — RBAC is now
+enforced through `user_roles`, not this column; kept only as a display hint) ·
+`is_active` · `created_at`.
 
 ### patients
 `id` PK · `reg_no` UK (`P000001…`, auto-generated with collision check) ·
@@ -97,6 +106,35 @@ module; see [`modules/Settings.md`](./modules/Settings.md) and ADR-002 §6.6.
 `id` PK · `patient_id` FK→patients · `visit_id` (nullable) · `file_name` ·
 `file_path` (relative, under `attachments/patient_<reg_no>/`) · `file_type` ·
 `uploaded_at`.
+
+### RBAC tables (Sprint 5 / F3 — `v0003_rbac`, ADR-003)
+
+Authorization is data-driven and resolves through `user_roles →
+role_permissions → permissions`; `users.role` is never read for an access
+decision.
+
+- **roles** — `id` PK · `name` UK · `description` · `is_system` (Administrator
+  is a protected system role) · `created_at`. Seeded with exactly five
+  predefined roles: Administrator, Doctor, Reception, Pharmacy, Accounts.
+- **permissions** — `id` PK · `key` UK (`module.action`) · `description` ·
+  `created_at`. Seeded with exactly 16 permission keys (`dashboard.view`,
+  `patients.view`, `registration.create`, `patients.edit`,
+  `patients.deactivate`, `attachments.upload`, `attachments.delete`,
+  `cases.view`, `cases.manage`, `visits.view`, `visits.manage`,
+  `consultation.view`, `consultation.edit`, `settings.edit`, `backup.run`,
+  `rbac.manage`).
+- **role_permissions** — `role_id` FK→roles · `permission_id` FK→permissions ·
+  PK(`role_id`, `permission_id`). The default role→permission matrix (see
+  [`modules/Roles.md`](./modules/Roles.md)).
+- **user_roles** — `user_id` FK→users · `role_id` FK→roles · `created_at` ·
+  PK(`user_id`, `role_id`). **UNIQUE index `idx_user_roles_user` on
+  `user_roles(user_id)` enforces one active role per user** at the DB level.
+
+Additive + reversible; no change to existing tables. The migration binds any
+existing `Admin`/`Administrator` user to the Administrator role (upgrade), and
+`init_db` binds the seeded admin on a fresh DB — so an administrator is never
+locked out. Custom/runtime roles, multi-role users, and row-level authorization
+are out of scope (not implemented).
 
 ## Relationships
 
@@ -144,7 +182,9 @@ must **never** drop or rename a column an older build reads.
 
 ## Planned tables (not yet created)
 
-`appointments`, `queue`, `roles`/`permissions`, `invoices`/`invoice_items`/
+`appointments`, `queue`, `invoices`/`invoice_items`/
 `payments`, `dispense_*`, `inventory_*`, `protocols`/`protocol_items`,
 `ocr_results`, `messages`/`message_templates`, telemedicine `sessions`. Each
-arrives with its module as a new migration.
+arrives with its module as a new migration. (The RBAC tables `roles`,
+`permissions`, `role_permissions`, `user_roles` are **no longer planned** —
+they were delivered in Sprint 5 via `v0003_rbac`; see "RBAC tables" above.)

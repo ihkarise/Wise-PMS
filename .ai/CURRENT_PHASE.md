@@ -1,16 +1,16 @@
 # .ai/CURRENT_PHASE.md
 
 **Phase:** Sprint 5 — F3 RBAC (Role-Based Access Control, ADR-003)
-**Status:** ✅ IMPLEMENTATION COMPLETE — Milestones M1–M5 implemented and
-security-audited; M6 documentation closure done. On branch
-`claude/sprint-5-implementation` (5 commits, HEAD `ebe58fb`, base
-`main` `1263d8c`), 5 ahead / 0 behind `main`, working tree clean.
-`python3 -m pytest -q` → **130 passing** (0 failed/skipped/errors/warnings).
-Regression golden changed exactly once, intentionally (the M1 RBAC
-tables/index — rule 12/13); no golden change in M2–M5. **Not yet merged:
-awaiting the Sprint 5 PR / Product Owner release authorization.**
-**Branch:** `claude/sprint-5-implementation`
-**Updated:** 2026-09-20 (M6 documentation closure)
+**Status:** ✅ CLOSED — merged to `main` via **PR #14** (merge commit
+`10e0738`, on top of the Sprint 4 base). Milestones M1–M5 implemented and
+security-audited; M6 documentation closure done. `main == origin/main ==
+10e0738`, working tree clean.
+`python3 -m pytest -q` → **130 passing** (0 failed/skipped/errors/warnings);
+layering checks PASS (5); regression golden PASS (1).
+Regression golden changed exactly once across the sprint, intentionally (the
+M1 RBAC tables/index — rule 12/13); no golden change in M2–M5.
+**No implementation work is pending. No next phase is authorized.**
+**Updated:** 2026-09-20 (post-merge synchronization: PR #14 confirmed merged)
 
 ## Goal
 Make `users.role` **enforced** instead of decorative (close L4 / the
