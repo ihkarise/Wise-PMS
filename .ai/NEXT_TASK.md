@@ -30,9 +30,12 @@ derived `BACKUP_KEY` with mandatory domain separation, Recovery Key ≠
 parameter, pins a package, or authorizes implementation.
 
 ## Blocked on
-**Specialist cryptographic security review** (M0 §24 checklist — pending) and
-final Product Owner approval of the M0 design PR (#17). No implementation task
-is in flight; no code changes are pending.
+**Specialist cryptographic security review — COMPLETE** (verdict: ACCEPTABLE
+WITH CONDITIONS, no BLOCKER; findings SEC-01…13 recorded in M0 §26). What now
+blocks M1 is clearing the §26.10 "before M1" conditions (SEC-01 AEAD/library,
+SEC-04 KDF clarification, SEC-05 SQLCipher raw-key/profile, SEC-09 dependency/
+packaging, SEC-12/13 HKDF + codec verification) plus final Product Owner
+approval. No implementation task is in flight; no code changes are pending.
 
 ## Next
 **M1 remains NOT AUTHORIZED.** It becomes eligible only after the eight M0 §25
