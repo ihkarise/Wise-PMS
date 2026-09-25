@@ -10,6 +10,13 @@ decisions, §24 specialist gate, §25 M1 prerequisites, §26 SEC-01…13, §27
 authority boundaries) and
 [`../architecture-decisions/ADR-004-F7-Encryption-at-Rest.md`](../architecture-decisions/ADR-004-F7-Encryption-at-Rest.md).
 This document changes none of them.
+**Update (2026-09-25) — PO decisions recorded:** D-A…D-H are recorded in
+[`SPRINT6_PRE_M1_PO_DECISIONS.md`](./SPRINT6_PRE_M1_PO_DECISIONS.md)
+(Python 3.14 / Windows x64; `sqlcipher3` primary candidate; XChaCha20-Poly1305
+via PyNaCl/libsodium candidate; stdlib RFC 5869 HKDF; `ctypes` DPAPI; minimal
+dependency stack; ≈ ≤10 s unlock target; strict N1; N2 corrected). Evidence
+gathering uses those candidates. **Every evidence item below remains
+PENDING.**
 
 > **Scope contract.** This plan defines *what evidence must exist* before M1
 > can even be considered for authorization, *how* it is gathered, and *which
@@ -355,7 +362,7 @@ runbook test list for before production — not required pre-M1.
 
 | Gate | Required evidence | Status | Blocks M1? |
 | ---- | ----------------- | ------ | :--------: |
-| Target runtime fixed | PO decision D-A: target CPython minor version + Windows architecture (R10, O2, O3) | PENDING | YES |
+| Target runtime fixed | PO decision D-A — **DECIDED 2026-09-25: CPython 3.14 / Windows x64**; compatibility evidence (incl. Flet 0.28.3 on 3.14) still required | PENDING (evidence) | YES |
 | SQLCipher binding | E1-1…E1-9, E1-16…E1-23 on ≥1 candidate meeting M0 §6.1 criteria 1–10 | PENDING | YES |
 | Raw-key profile | E1-10…E1-15 + SPEC statement E7-7 (SEC-05, SEC-13) | PENDING | YES |
 | AEAD API | E2-1…E2-9 + SPEC E7-1 (SEC-01); if unmet → formally reviewed alternative, PO decision | PENDING | YES |
@@ -369,14 +376,17 @@ runbook test list for before production — not required pre-M1.
 | Specialist sign-off | E7-15: full M0 §24 checklist signed with evidence references | PENDING | YES |
 | Product Owner approval | Final M0 approval (§25 item 1) + decisions D-A…D-G (§7) + explicit, separate M1 authorization | PENDING | YES |
 
-**Note N1 — M0 §26 internal inconsistency (not edited here).** In the §26
+**Note N1 — RESOLVED by PO (2026-09-25): strict interpretation adopted;
+M0 §26 table aligned in M0 Revision 4; §25/§26.10 unchanged.** Original note:
+**M0 §26 internal inconsistency (not edited here).** In the §26
 findings table, SEC-05 is tagged "Before M3" yet "Blocks M1 = Yes", and SEC-12
 / SEC-13 are tagged "Blocks M1 = No", while §26.10 lists SEC-05, SEC-12 and
 SEC-13 all as "Must be resolved BEFORE M1". This plan follows the **stricter**
 §26.10 reading (all three block M1). The PO/SPEC should reconcile the table in
 a future documentation revision.
 
-**Note N2 — possible M0 factual error (not edited here).** M0 §7.1 lists
+**Note N2 — RESOLVED by PO (2026-09-25): M0 §7.1/§22 corrected in M0
+Revision 4.** Original note: **possible M0 factual error (not edited here).** M0 §7.1 lists
 `cryptography` as providing `XChaCha20Poly1305`. Desk observation O4 indicates
 the current `cryptography` AEAD module does not export it. This is exactly the
 risk SEC-01 anticipated; E2-1 must settle it with evidence.
@@ -396,6 +406,11 @@ risk SEC-01 anticipated; E2-1 must settle it with evidence.
 ---
 
 ## 7. Product Owner decisions still required (none made here)
+
+> **Update 2026-09-25:** D-A…D-H have since been decided — see
+> [`SPRINT6_PRE_M1_PO_DECISIONS.md`](./SPRINT6_PRE_M1_PO_DECISIONS.md). The
+> table below is kept as the original question set. Final package
+> selection, scrypt parameters, and M1 authorization remain open.
 
 | ID | Decision | Why it is needed before evidence is conclusive |
 | -- | -------- | ---------------------------------------------- |

@@ -30,6 +30,14 @@ re-tiered by resolution milestone (§26.10), and the three authorities are made
 explicit (§27). Documentation only — no cryptographic parameter is invented,
 no open implementation detail is selected, no code/dependency/schema/test
 change. **M1 remains NOT AUTHORIZED.**
+**Revision 4 (2026-09-25) — PRE-M1 PO DECISIONS + N1/N2 CORRECTIONS:** the
+Product Owner's pre-M1 decisions D-A…D-H are recorded in
+[`SPRINT6_PRE_M1_PO_DECISIONS.md`](./SPRINT6_PRE_M1_PO_DECISIONS.md) and
+summarized in §28. Two documentation-only corrections are applied here:
+**N1** — the §26 table now matches §26.10 (strict gate: SEC-05, SEC-12,
+SEC-13 all block M1; §25/§26.10 unchanged); **N2** — §7.1/§22 no longer claim
+that `cryptography` provides XChaCha20-Poly1305. No architecture, runtime,
+dependency, schema, test, or packaging change. **M1 remains NOT AUTHORIZED.**
 
 > **Reading contract — four tiers, kept strictly distinct (do not collapse):**
 > - **[LOCKED]** — Product-Owner-approved architecture (the nine decisions in
@@ -329,9 +337,9 @@ Decorator over `LocalDiskStorageProvider`, selected at
 | Per-file key strategy | required to stay safe | recommended but not required for safety |
 | Performance (AES-NI) | fastest with hardware AES | fast in software; no AES-NI dependency |
 | Windows HW acceleration | benefits from AES-NI (common but not universal on clinic HW) | consistent without special HW |
-| Implementation maturity | ubiquitous, well-audited | widely available, well-regarded (libsodium/`cryptography`) |
-| Python library support | `cryptography` (`AESGCM`) | `cryptography` (`XChaCha20Poly1305` / ChaCha20Poly1305) |
-| PyInstaller implications | one native wheel (`cryptography`) | same wheel; no extra dependency |
+| Implementation maturity | ubiquitous, well-audited | widely available, well-regarded (libsodium) |
+| Python library support | `cryptography` (`AESGCM`) | **Corrected (Rev. 4, N2):** `cryptography` provides `ChaCha20Poly1305` (96-bit nonce) but does **NOT** provide XChaCha20-Poly1305. XChaCha20-Poly1305 is currently evaluated through **PyNaCl/libsodium**; exact provider/API/version remain subject to evidence validation (§28) |
+| PyInstaller implications | one native wheel (`cryptography`) | **Corrected (Rev. 4, N2):** an additional compiled dependency (PyNaCl + `cffi`) unless another provider is verified |
 | Backup streaming suitability | fine with chunked construction + per-chunk nonces | large nonce simplifies chunk/stream nonce management |
 
 **Recommendation:** **XChaCha20-Poly1305** for whole-file attachments and
@@ -722,7 +730,7 @@ package. Columns: **PO direction** · **Specialist review required** ·
 | # | Decision | PO architecture direction | Specialist security review required | Implementation evidence required | Blocks M1? |
 | - | -------- | ------------------------- | ----------------------------------- | -------------------------------- | :--------: |
 | 1 | **SQLCipher binding** | APPROVED: statically linked / prebuilt **SQLCipher 4.x + OpenSSL 3.x** wheel approach. **Do NOT select/pin the final package** until the M1 evidence gate is met | SQLCipher cipher profile, raw-key handling, PRAGMAs; bundled SQLCipher/OpenSSL versions | Clean-Windows install, offline run, PyInstaller load, reproducible pin, DB-API compatibility, licensing/redistribution (§6.1) | **Yes** |
-| 2 | **Attachment & backup AEAD** | APPROVED DIRECTION: **XChaCha20-Poly1305** (architecture direction only) | Exact API/version, nonce construction & uniqueness, AAD, tag verification, whole-file vs chunked/streamed design | `cryptography` version/API availability for the chosen AEAD | **Yes** |
+| 2 | **Attachment & backup AEAD** | APPROVED DIRECTION: **XChaCha20-Poly1305** (architecture direction only) | Exact API/version, nonce construction & uniqueness, AAD, tag verification, whole-file vs chunked/streamed design | AEAD provider package version/API availability for the chosen AEAD (corrected Rev. 4, N2: `cryptography` does not provide XChaCha20-Poly1305; candidate is PyNaCl/libsodium — §28) | **Yes** |
 | 3 | **KDF** | APPROVED: high-entropy **Recovery Key → HKDF**; human passphrases → **memory-hard KDF, scrypt preferred** over adding `argon2-cffi` (dependency minimization) | KDF choice confirmation; **exact scrypt parameters** | Parameters selected after specialist review **and benchmarked on representative clinic hardware** | **Yes** |
 | 4 | **Windows DPAPI** | APPROVED: **user-scope** DPAPI for `KEK_os` only; Recovery Key remains the mandatory offline recovery; DPAPI is **not** protection against a compromised same-Windows-identity process | DPAPI usage/permissions; the non-Windows dev/CI fallback | Non-Windows fallback explicitly designed & reviewed before implementation | **Yes** |
 | 5 | **SQLite journal mode** | APPROVED: **retain rollback journal**; do NOT migrate to WAL (selected F7 direction for the single-clinician offline architecture) | Confirm side-file (journal) encryption under SQLCipher | — | **No** (selected default) |
@@ -823,15 +831,15 @@ implementation detail the review left open.**
 | SEC-02 | HIGH | DB file + attachment tree cannot switch in one atomic filesystem op | A crash between the two switches leaves a mixed encrypted/plaintext state | Durable combined migration-phase marker + exclusive/resumable/idempotent recovery (§26.3) | Before M5 | No | Specialist/design |
 | SEC-03 | HIGH | Pre-F7 plaintext `backups/*.zip` survive migration; OS pagefile/hibernation may hold plaintext/keys | Full-PHI plaintext can persist off the encrypted set | Define legacy-backup handling; document pagefile/hibernation residual + recommend OS FDE (§26.4) | Before production | No | Specialist judgment |
 | SEC-04 | MEDIUM | KDF ambiguity between the high-entropy Recovery Key and low-entropy passphrases | Risk of an unnecessary/incorrect KDF on `BACKUP_KEY`/`KEK_recovery` | Fix: HKDF for the Recovery Key paths; memory-hard KDF only for passphrases (§26.1) | Before M1 | **Yes** | Specialist confirm |
-| SEC-05 | MEDIUM | SQLCipher raw-key format/salt/HMAC-key/PRAGMA specifics unpinned | Wrong raw-key handling could weaken/keying-break the DB | Pin format/salt/PRAGMA against the exact binding (§26.5) | Before M3 | **Yes** | **Yes** (SQLCipher) |
+| SEC-05 | MEDIUM | SQLCipher raw-key format/salt/HMAC-key/PRAGMA specifics unpinned | Wrong raw-key handling could weaken/keying-break the DB | Pin format/salt/PRAGMA against the exact binding (§26.5) | Before M1 (verification evidence); enforced in M3 implementation — strict gate, PO Rev. 4 (§28) | **Yes** | **Yes** (SQLCipher) |
 | SEC-06 | MEDIUM | User-scope DPAPI can fail on account change, forced password reset, profile corruption/replacement | KEK_os becomes unusable | Document + operational runbook; Recovery Key is the recovery path (§26.6) | Before production | No | **Yes** (Windows) |
 | SEC-07 | MEDIUM | Nonce/key uniqueness must be enforced per encryption | Nonce reuse (esp. AES-GCM) would break confidentiality | Fresh per-file key / fresh nonce; no reuse; no unsafe in-place re-encrypt (§26.8) | Before M2/M4 | No | Specialist |
 | SEC-08 | MEDIUM | Recovery Key is never stored → a lost printout on a still-unlocked machine cannot be re-shown | Clinics may be stranded without a re-issue path | Authenticated rotate/re-provision flow while the current key is available (§26.7) | Before production/recovery workflow | No | Specialist/operational |
 | SEC-09 | MEDIUM | Native crypto/DB deps change requirements, the dependency gate, and packaging | Layering gate + PyInstaller impact | Approve dependency architecture; pin versions; verify Windows/PyInstaller load; known OpenSSL/SQLCipher versions (§26.9) | Before M1 | **Yes** | **Yes** |
 | SEC-10 | LOW | Bundled native libs carry licensing/NOTICE obligations (Apache-2.0 attribution) | Redistribution compliance | Licensing/NOTICE review; include required notices in the `.exe` | Before production | No | **Yes** (legal) |
 | SEC-11 | INFORMATIONAL | Python cannot guarantee key zeroization; DEK/plaintext in memory while unlocked | Residual consistent with the threat model (running-process not protected) | Document residual; minimize key lifetime | — | No | No |
-| SEC-12 | INFORMATIONAL | HKDF domain separation adequacy | Depends on a uniform Recovery Key + one consistent HKDF construction | Confirm HKDF construction and uniform IKM (§26.1) | Before M1 | No | Specialist confirm |
-| SEC-13 | INFORMATIONAL | SQLCipher codec/temp/journal behavior varies by build | `temp_store`/journal/temp encryption may not hold as assumed | Verify codec-enabled build; journal + temp files encrypted; `temp_store=MEMORY` supported (§26.5) | Before M3 | No | **Yes** (SQLCipher) |
+| SEC-12 | INFORMATIONAL | HKDF domain separation adequacy | Depends on a uniform Recovery Key + one consistent HKDF construction | Confirm HKDF construction and uniform IKM (§26.1) | Before M1 — strict gate, PO Rev. 4 (§28) | **Yes** | Specialist confirm |
+| SEC-13 | INFORMATIONAL | SQLCipher codec/temp/journal behavior varies by build | `temp_store`/journal/temp encryption may not hold as assumed | Verify codec-enabled build; journal + temp files encrypted; `temp_store=MEMORY` supported (§26.5) | Before M1 (verification evidence); enforced in M3 implementation — strict gate, PO Rev. 4 (§28) | **Yes** | **Yes** (SQLCipher) |
 
 ### 26.1 KDF clarification (SEC-04, SEC-12)
 
@@ -964,6 +972,24 @@ M1:**
 M1 becomes eligible only when all three are satisfied for the "before M1"
 items (§25 + §26.10) — and then still requires its own separate Product Owner
 authorization; it does not begin automatically.
+
+## 28. Pre-M1 Product Owner Decisions (Revision 4 — pointer)
+
+The authoritative record is
+[`SPRINT6_PRE_M1_PO_DECISIONS.md`](./SPRINT6_PRE_M1_PO_DECISIONS.md). In
+summary (directions/candidates for **evidence evaluation** — none is
+implementation authorization, and none replaces §24 specialist review or the
+§25 evidence prerequisites):
+
+- **D-A** Python **3.14**, Windows **x64** (Flet 0.28.3 on 3.14 = evidence gate).
+- **D-B** `sqlcipher3` = primary SQLCipher candidate for evidence (no silent substitution).
+- **D-C** XChaCha20-Poly1305 retained; **PyNaCl/libsodium** = provider candidate.
+- **D-D** HKDF via a **standard-library RFC 5869** construction (`hmac`/`hashlib`).
+- **D-E** DPAPI via **`ctypes`** (`crypt32.CryptProtectData`/`CryptUnprotectData`).
+- **D-F** **Minimal dependency stack**; no `cryptography`/`pywin32` without evidence + PO approval.
+- **D-G** Product target: normal unlock **≈ ≤10 s** on the minimum supported clinic PC (not a cryptographic parameter).
+- **D-H/N1** **Strict** gate: SEC-05, SEC-12, SEC-13 resolved **before M1** (§26 table aligned; §25/§26.10 unchanged).
+- **D-H/N2** `cryptography` provides ChaCha20Poly1305, **not** XChaCha20-Poly1305 (§7.1/§22 corrected).
 
 ---
 
