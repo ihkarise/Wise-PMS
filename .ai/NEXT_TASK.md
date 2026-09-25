@@ -44,3 +44,12 @@ SQLCipher binding + Windows/offline/PyInstaller evidence, AEAD API
 availability, benchmarked KDF params, dependency/layering-gate approval,
 licensing review) — and then still requires its own separate Product Owner
 authorization; it does not begin automatically.
+
+## Pre-M1 status (2026-09-25)
+- Evidence plan: `docs/planning/SPRINT6_PRE_M1_EVIDENCE_PLAN.md` (all gates PENDING).
+- PO decisions D-A…D-H recorded: `docs/planning/SPRINT6_PRE_M1_PO_DECISIONS.md`
+  (Python 3.14 / Windows x64; `sqlcipher3` candidate; XChaCha20-Poly1305 via
+  PyNaCl/libsodium candidate; stdlib RFC 5869 HKDF; `ctypes` DPAPI; minimal
+  dependency stack; ≈ ≤10 s unlock target; strict N1; N2 corrected in M0 Rev. 4).
+- **Next (requires separate authorization):** Pre-M1 Evidence & Validation
+  using the approved PO decisions. **M1 IMPLEMENTATION IS NOT AUTHORIZED.**
